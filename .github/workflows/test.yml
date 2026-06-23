@@ -80,15 +80,15 @@ jobs:
 
     - name: Check typing with mypy
       run: |
-        mypy diff_biophys/
+        mypy diff_integrator/
 
     - name: Lint with ruff
       run: |
-        ruff check diff_biophys/
+        ruff check diff_integrator/
 
     - name: Run tests
       run: |
-        pytest -v --cov=diff_biophys --cov-report=xml
+        pytest -v --cov=diff_integrator --cov-report=xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
