@@ -1,0 +1,52 @@
+site_name: DiffIntegrator
+site_url: https://elkins-lab.github.io/diff-integrator/
+site_description: Differentiable biophysical modeling in JAX
+site_author: George Elkins
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: teal
+    accent: cyan
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - Concepts & Context: concepts.md
+  - Use Cases: use_cases.md
+  - Core Theory: theory.md
+  - API Reference:
+      - Geometry: api/geometry.md
+      - SAXS: api/saxs.md
+      - NMR: api/nmr.md
+      - CD & Cryo-EM: api/cd_and_cryoem.md
+  - Tutorials:
+      - 01 · Hello, Gradient Descent!: https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/01_hello_gradient_descent.ipynb
+      - 02 · NMR Fundamentals: https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/02_nmr_fundamentals.ipynb
+      - 03 · CD Spectroscopy: https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/03_cd_spectroscopy.ipynb
+  - Examples:
+      - Refinement Lab: examples/refinement.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+  - admonition
+  - pymdownx.details
+
+plugins:
+  - search
+  - mkdocstrings
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
