@@ -17,8 +17,10 @@ class GeometryLoss(LossTerm):
         ideal_bond_lengths: jnp.ndarray | None = None,
         clash_pairs: jnp.ndarray | None = None,
         min_clash_dists: jnp.ndarray | None = None,
+        target_coords: jnp.ndarray | None = None,
         bond_weight: float = 1.0,
         clash_weight: float = 1.0,
+        target_weight: float = 1.0,
     ):
         """
         Args:
@@ -26,15 +28,19 @@ class GeometryLoss(LossTerm):
             ideal_bond_lengths: (N,) target distances for bonds.
             clash_pairs: (M, 2) indices of atom pairs to check for clashes.
             min_clash_dists: (M,) minimum allowed distance for each clash pair.
+            target_coords: (N, 3) reference coordinates for harmonic position restraints.
             bond_weight: Weight multiplier for the bond loss.
             clash_weight: Weight multiplier for the clash loss.
+            target_weight: Weight multiplier for the coordinate restraint loss.
         """
         self.bonds = bonds
         self.ideal_bond_lengths = ideal_bond_lengths
         self.clash_pairs = clash_pairs
         self.min_clash_dists = min_clash_dists
+        self.target_coords = target_coords
         self.bond_weight = bond_weight
         self.clash_weight = clash_weight
+        self.target_weight = target_weight
 
     def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
         total_loss = jnp.array(0.0)
@@ -56,5 +62,10 @@ class GeometryLoss(LossTerm):
             violations = jnp.maximum(0.0, self.min_clash_dists - dists)
             clash_loss = jnp.sum(violations**2)
             total_loss += self.clash_weight * clash_loss
+
+        # Target coordinate constraints (harmonic position restraints)
+        if self.target_coords is not None:
+            target_loss = jnp.mean(jnp.sum((coords - self.target_coords) ** 2, axis=-1))
+            total_loss += self.target_weight * target_loss
 
         return total_loss

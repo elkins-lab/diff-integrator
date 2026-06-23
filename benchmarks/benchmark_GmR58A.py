@@ -8,6 +8,7 @@ import numpy as np
 from diff_integrator.loss import JointLoss
 from diff_integrator.optimizer import IntegrativeRefiner
 from diff_integrator.terms.chemical_shifts import CAShiftLoss
+from diff_integrator.terms.geometry import GeometryLoss
 
 from diff_biophys.geometry.backbone import (
     compute_phi_psi,
@@ -34,7 +35,10 @@ def main():
     ca_exp = bmrb["CA"]
     ca_loss = CAShiftLoss(ca_exp["res_id"], ca_exp["shift"], res_ids, list(res_names))
     
+    geom_loss = GeometryLoss(target_coords=coords, target_weight=1.0)
+    
     joint_loss = JointLoss([
+        (geom_loss, 1.0),
         (ca_loss, 1.0)
     ])
     

@@ -9,6 +9,7 @@ import optax
 from diff_integrator.loss import JointLoss, LossTerm
 from diff_integrator.optimizer import IntegrativeRefiner
 from diff_integrator.terms.chemical_shifts import CAShiftLoss
+from diff_integrator.terms.geometry import GeometryLoss
 
 from diff_biophys.geometry.backbone import (
     compute_phi_psi,
@@ -55,7 +56,10 @@ def main():
     rdc_term_pag = LegacyRDCLoss(loss_pag, tensor_pag)
     rdc_term_peg = LegacyRDCLoss(loss_peg, tensor_peg)
     
+    geom_loss = GeometryLoss(target_coords=coords, target_weight=1.0)
+    
     joint_loss = JointLoss([
+        (geom_loss, 5.0),    # Strong anchor to prevent unravelling
         (ca_loss, 1.0),
         (rdc_term_pag, 1.0),
         (rdc_term_peg, 1.0)
@@ -80,6 +84,26 @@ def main():
     print(f"  PAG Q-factor (Final): {q_pag(final_coords):.3f}")
     print(f"  PEG Q-factor (Init): {q_peg(init_coords):.3f}")
     print(f"  PEG Q-factor (Final): {q_peg(final_coords):.3f}")
+
+    # Compute structural RMSD
+    import biotite.structure as struc
+    from biotite.structure.io.pdb import PDBFile
+    # We can just compute a simple centered RMSD or kabsch since coords are CA
+    def kabsch_rmsd(A, B):
+        A = np.array(A).reshape(-1, 3)
+        B = np.array(B).reshape(-1, 3)
+        A = A - A.mean(axis=0)
+        B = B - B.mean(axis=0)
+        U, S, Vt = np.linalg.svd(A.T @ B)
+        R = U @ Vt
+        if np.linalg.det(R) < 0:
+            Vt[-1, :] *= -1
+            R = U @ Vt
+        A_rot = A @ R
+        return np.sqrt(np.mean(np.sum((A_rot - B)**2, axis=1)))
+        
+    rmsd = kabsch_rmsd(init_coords, final_coords)
+    print(f"  Structural RMSD to Init: {rmsd:.3f} Å")
 
 if __name__ == "__main__":
     main()
