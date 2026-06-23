@@ -55,6 +55,7 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 check_untyped_defs = true
 strict_equality = true
+exclude = ["^benchmarks/"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -68,6 +69,7 @@ module = [
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["tests.*"]
+module = ["tests.*", "benchmarks.*"]
 disallow_untyped_defs = false
 check_untyped_defs = false
+ignore_missing_imports = true
