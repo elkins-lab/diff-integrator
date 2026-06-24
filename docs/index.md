@@ -3,7 +3,7 @@
 [![Tests](https://github.com/elkins-lab/diff-integrator/actions/workflows/test.yml/badge.svg)](https://github.com/elkins-lab/diff-integrator/actions/workflows/test.yml)
 [![Python 3.10+](https://img.shields.io/pypi/pyversions/diff-integrator.svg)](https://pypi.org/project/diff-integrator/)
 
-Welcome to **Diff-Integrator**, a high-performance JAX optimization engine designed for integrative structural biology. 
+Welcome to **Diff-Integrator**, a high-performance JAX optimization engine designed for integrative structural biology.
 
 It acts as the "orchestrator" that combines differentiable observables from **diff-biophys** into multi-objective loss functions.
 

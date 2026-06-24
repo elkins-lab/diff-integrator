@@ -43,16 +43,20 @@ def test_rdc_loss():
     assert gradients.shape == coords.shape
     assert not jnp.any(jnp.isnan(gradients))
 
+
 def test_rdc_loss_q_factor():
-    coords = jnp.array([
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0],
-    ])
+    coords = jnp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
     atom_pairs = jnp.array([[0, 1]])
     exp_rdcs = jnp.array([10.0])
     loss_fn = RDCLoss(atom_pairs=atom_pairs, exp_rdcs=exp_rdcs, loss_type="q_factor")
     loss_val = loss_fn(None, coords)
     assert float(loss_val) >= 0.0
+
 
 def test_rdc_loss_invalid_type():
     coords = jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
@@ -60,5 +64,6 @@ def test_rdc_loss_invalid_type():
     exp_rdcs = jnp.array([10.0])
     loss_fn = RDCLoss(atom_pairs=atom_pairs, exp_rdcs=exp_rdcs, loss_type="invalid")
     import pytest
+
     with pytest.raises(ValueError):
         loss_fn(None, coords)

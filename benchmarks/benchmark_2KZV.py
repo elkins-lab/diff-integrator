@@ -59,13 +59,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
-from diff_integrator.loss import JointLoss
-from diff_integrator.optimizer import IntegrativeRefiner
-from diff_integrator.terms.chemical_shifts import CAShiftLoss
-from diff_integrator.terms.geometry import GeometryLoss
-from diff_integrator.terms.nmr import FixedTensorRDCLoss
-
 from diff_biophys.geometry.backbone import (
     compute_phi_psi,
     get_backbone_coords,
@@ -75,6 +68,11 @@ from diff_biophys.geometry.backbone import (
 )
 from diff_biophys.nmr.io import load_rdc_table
 from diff_biophys.nmr.rdc import make_rdc_refinement_fns
+
+from diff_integrator.loss import JointLoss
+from diff_integrator.terms.chemical_shifts import CAShiftLoss
+from diff_integrator.terms.geometry import GeometryLoss
+from diff_integrator.terms.nmr import FixedTensorRDCLoss
 
 # ---------------------------------------------------------------------------
 # Data location — diff-biophys benchmark directory
@@ -187,14 +185,14 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 5. Build joint loss and refiner
     # ------------------------------------------------------------------
-    joint_loss = JointLoss([
-        (geom_loss,    WEIGHT_GEOMETRY),   # Strong anchor vs. RDC degeneracy
-        (ca_loss,      WEIGHT_CA_SHIFTS),
-        (rdc_term_pag, WEIGHT_RDC_PAG),
-        (rdc_term_peg, WEIGHT_RDC_PEG),
-    ])
-
-    refiner = IntegrativeRefiner(loss_fn=joint_loss)
+    joint_loss = JointLoss(
+        [
+            (geom_loss, WEIGHT_GEOMETRY),  # Strong anchor vs. RDC degeneracy
+            (ca_loss, WEIGHT_CA_SHIFTS),
+            (rdc_term_pag, WEIGHT_RDC_PAG),
+            (rdc_term_peg, WEIGHT_RDC_PEG),
+        ]
+    )
 
     # ------------------------------------------------------------------
     # 6. Evaluate baseline (before refinement)
@@ -227,6 +225,7 @@ def main() -> None:
         def objective(pp):  # type: ignore[no-untyped-def]
             c = build_backbone(pp[0], pp[1])
             return joint_loss(pp, c)
+
         loss_val, grads = jax.value_and_grad(objective)(p)
         updates, new_state = optimizer.update(grads, state)
         new_p = optax.apply_updates(p, updates)
@@ -244,7 +243,9 @@ def main() -> None:
         if (epoch + 1) % 100 == 0:
             q_p = float(q_pag(build_backbone(params[0], params[1])))
             q_e = float(q_peg(build_backbone(params[0], params[1])))
-            print(f"  Epoch {epoch + 1:4d}: loss={loss_val:.4f}  Q(PAG)={q_p:.3f}  Q(PEG)={q_e:.3f}")
+            print(
+                f"  Epoch {epoch + 1:4d}: loss={loss_val:.4f}  Q(PAG)={q_p:.3f}  Q(PEG)={q_e:.3f}"
+            )
 
     # ------------------------------------------------------------------
     # 8. Evaluate final results

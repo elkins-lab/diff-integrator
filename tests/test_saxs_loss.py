@@ -69,6 +69,7 @@ def test_saxs_loss_gradients():
     assert gradients.shape == coords.shape
     assert not jnp.any(jnp.isnan(gradients))
 
+
 def test_saxs_loss_no_scaling():
     coords = jnp.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]])
     q_values = jnp.array([0.1])
@@ -78,7 +79,7 @@ def test_saxs_loss_no_scaling():
         q_values=q_values,
         exp_intensities=exp_intensities,
         form_factors=form_factors,
-        scale_mode="none"
+        scale_mode="none",
     )
     loss_val = saxs_loss(None, coords)
     assert not jnp.isnan(loss_val)

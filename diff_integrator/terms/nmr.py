@@ -23,7 +23,6 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-
 from diff_biophys.nmr.rdc import calculate_rdc_from_tensor, fit_saupe_tensor
 
 from diff_integrator.loss import LossTerm
@@ -123,8 +122,10 @@ class FixedTensorRDCLoss(LossTerm):
             )
         # Stop gradient flows through the fixed tensor; gradients only
         # flow through the coords path inside loss_fn.
+        import typing
+
         frozen_tensor = jax.lax.stop_gradient(self._tensor)
-        return self._loss_fn(coords, frozen_tensor)
+        return typing.cast(jnp.ndarray, self._loss_fn(coords, frozen_tensor))
 
 
 class RDCLoss(LossTerm):
@@ -155,6 +156,7 @@ class RDCLoss(LossTerm):
         loss_type: str = "mse",
     ) -> None:
         import warnings
+
         warnings.warn(
             "RDCLoss fits the tensor inside the gradient and is not suitable for "
             "structure refinement. Use FixedTensorRDCLoss instead.",

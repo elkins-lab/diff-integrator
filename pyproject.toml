@@ -54,7 +54,7 @@ ignore = ["E501", "N806", "N803", "N802"]
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
-warn_unused_configs = true
+warn_unused_configs = false
 disallow_untyped_defs = true
 check_untyped_defs = true
 strict_equality = true

@@ -46,8 +46,10 @@ class IntegrativeRefiner:
             optimizer = optax.adam(learning_rate)
 
         if kinematics_fn is None:
+
             def default_kinematics(x: Any) -> jnp.ndarray:
                 return jnp.asarray(x)
+
             kinematics_fn = default_kinematics
 
         # Initialize optimizer state

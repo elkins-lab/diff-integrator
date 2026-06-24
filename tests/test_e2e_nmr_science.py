@@ -25,7 +25,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from diff_biophys.geometry.backbone import (
     compute_phi_psi,
     get_backbone_coords,
@@ -130,15 +129,17 @@ def test_2kzv_joint_refinement_published_validation() -> None:
     init_q_peg = float(q_peg_fn(init_coords))
 
     # --- Optimization (abbreviated for test speed) ---
-    import optax  # noqa: PLC0415
     import jax  # noqa: PLC0415
+    import optax  # noqa: PLC0415
 
-    joint_loss = JointLoss([
-        (geom_loss,    5.0),
-        (ca_loss,      1.0),
-        (rdc_term_pag, 1.0),
-        (rdc_term_peg, 1.0),
-    ])
+    joint_loss = JointLoss(
+        [
+            (geom_loss, 5.0),
+            (ca_loss, 1.0),
+            (rdc_term_pag, 1.0),
+            (rdc_term_peg, 1.0),
+        ]
+    )
 
     optimizer = optax.adam(0.01)
     opt_state = optimizer.init((init_phi, init_psi))
@@ -149,6 +150,7 @@ def test_2kzv_joint_refinement_published_validation() -> None:
         def obj(pp):  # type: ignore[no-untyped-def]
             c = build_backbone(pp[0], pp[1])
             return joint_loss(pp, c)
+
         loss_val, grads = jax.value_and_grad(obj)(p)
         updates, new_state = optimizer.update(grads, state)
         return optax.apply_updates(p, updates), new_state, loss_val
@@ -217,10 +219,12 @@ def test_gmr58a_shift_refinement() -> None:
     ca_loss = CAShiftLoss(ca_exp["res_id"], ca_exp["shift"], res_ids, list(res_names))
     geom_loss = GeometryLoss(target_coords=coords, target_weight=1.0)
 
-    joint_loss = JointLoss([
-        (geom_loss, 1.0),
-        (ca_loss,   1.0),
-    ])
+    joint_loss = JointLoss(
+        [
+            (geom_loss, 1.0),
+            (ca_loss, 1.0),
+        ]
+    )
 
     init_coords = build_backbone(init_phi, init_psi)
     init_loss = float(ca_loss((init_phi, init_psi), init_coords))
@@ -241,6 +245,4 @@ def test_gmr58a_shift_refinement() -> None:
     assert final_loss < init_loss, (
         f"Cα shift loss did not decrease: {init_loss:.3f} → {final_loss:.3f} ppm"
     )
-    assert rmsd < 2.0, (
-        f"Structural drift too high: {rmsd:.2f} Å"
-    )
+    assert rmsd < 2.0, f"Structural drift too high: {rmsd:.2f} Å"

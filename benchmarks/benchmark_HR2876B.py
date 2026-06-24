@@ -47,12 +47,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
-from diff_integrator.loss import JointLoss
-from diff_integrator.optimizer import IntegrativeRefiner
-from diff_integrator.terms.chemical_shifts import CAShiftLoss
-from diff_integrator.terms.geometry import GeometryLoss
-
 from diff_biophys.geometry.backbone import (
     compute_phi_psi,
     get_backbone_coords,
@@ -60,6 +54,11 @@ from diff_biophys.geometry.backbone import (
     load_pdb_model,
     make_backbone_builder,
 )
+
+from diff_integrator.loss import JointLoss
+from diff_integrator.optimizer import IntegrativeRefiner
+from diff_integrator.terms.chemical_shifts import CAShiftLoss
+from diff_integrator.terms.geometry import GeometryLoss
 
 # ---------------------------------------------------------------------------
 # Data location
@@ -126,10 +125,12 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 4. Build joint loss and refiner
     # ------------------------------------------------------------------
-    joint_loss = JointLoss([
-        (geom_loss, WEIGHT_GEOMETRY),
-        (ca_loss,   WEIGHT_CA_SHIFTS),
-    ])
+    joint_loss = JointLoss(
+        [
+            (geom_loss, WEIGHT_GEOMETRY),
+            (ca_loss, WEIGHT_CA_SHIFTS),
+        ]
+    )
 
     refiner = IntegrativeRefiner(loss_fn=joint_loss)
 
@@ -138,7 +139,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     init_coords = build_backbone(init_phi, init_psi)
     init_ca_rmsd = float(ca_loss((init_phi, init_psi), init_coords))
-    print(f"\n--- Baseline (NMR model 1, pre-refinement) ---")
+    print("\n--- Baseline (NMR model 1, pre-refinement) ---")
     print(f"  Cα RMSD: {init_ca_rmsd:.3f} ppm")
 
     # ------------------------------------------------------------------
