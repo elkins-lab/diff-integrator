@@ -1,0 +1,27 @@
+# 15N-1H RDC data for 2KZV (CvR118A, BMRB 17020)
+# Source: Li, Spaman, Tejero, Montelione et al. (2023) PMID 37257257
+#         Data provided by Roberto Tejero, RPI (PALES/DC format)
+# Columns: res_id  res_name  rdc_hz  err_hz
+#
+# Medium: PEG (polyethylene glycol)
+# Table 5 targets: AF2 Q1=0.35 (0.24) → NMR medoid Q1=0.36 (0.20)
+#   Values in parentheses exclude outliers Thr14 and Ser54
+#   (Thr14 and Ser54 are in the data; Thr14 is a known dynamic outlier)
+# 16 residues (well-defined secondary structure regions)
+#
+14	THR	11.350	0.418
+15	SER	-0.433	0.418
+16	ALA	-4.224	0.418
+18	GLU	0.747	0.418
+19	ALA	-4.334	0.418
+30	SER	1.880	0.418
+31	ALA	-6.730	0.418
+32	VAL	-2.376	0.418
+34	SER	-4.177	0.418
+35	TYR	-8.073	0.418
+37	ALA	0.742	0.418
+38	LYS	-4.029	0.418
+58	LYS	4.114	0.418
+76	SER	-8.491	0.418
+77	GLU	-10.088	0.418
+78	ILE	-11.872	0.418

@@ -18,8 +18,10 @@ from diff_biophys.geometry.backbone import (
     make_backbone_builder,
 )
 
-# Assume diff-biophys is cloned alongside diff-integrator
-BIOPHYS_DIR = Path(__file__).parent.parent.parent / "diff-biophys"
+# The tests use local data copied from published sources
+DATA_DIR = Path(__file__).parent / "data"
+UTILS_DIR = Path(__file__).parent / "utils"
+sys.path.insert(0, str(UTILS_DIR))
 
 class LegacyRDCLoss(LossTerm):
     def __init__(self, rdc_loss_fn, tensor_fn):
@@ -51,11 +53,10 @@ def test_2kzv_joint_refinement_published_validation():
     Reference: Li et al. (2023).
     Ensures that Q-factors decrease without structural unravelling.
     """
-    bench_dir = BIOPHYS_DIR / "benchmarks" / "2KZV"
+    bench_dir = DATA_DIR / "2KZV"
     if not bench_dir.exists():
         pytest.skip(f"Benchmark data not found at {bench_dir}")
         
-    sys.path.insert(0, str(bench_dir))
     from parse_bmrb import load_bmrb_shifts
     from diff_biophys.nmr.io import load_rdc_table
     from diff_biophys.nmr.rdc import make_rdc_refinement_fns
@@ -133,11 +134,10 @@ def test_gmr58a_shift_refinement():
     """
     Validates end-to-end refinement of GmR58A using BMRB C-alpha shifts.
     """
-    bench_dir = BIOPHYS_DIR / "benchmarks" / "GmR58A"
+    bench_dir = DATA_DIR / "GmR58A"
     if not bench_dir.exists():
         pytest.skip(f"Benchmark data not found at {bench_dir}")
         
-    sys.path.insert(0, str(bench_dir))
     from parse_nmrstar import load_bmrb_shifts
 
     struct = load_pdb_model(bench_dir / "2KUT.pdb", model_id=1)
