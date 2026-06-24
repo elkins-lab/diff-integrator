@@ -88,7 +88,7 @@ final_coords, history = refiner.run(
 
 ## 🔬 Scientific Validation
 
-`diff-integrator` has been successfully validated against experimental NMR datasets:
+`diff-integrator` is being validated against several experimental NMR datasets:
 - **2KZV (CvR118A)**: Joint refinement using $C_\alpha$ Chemical Shifts and dual-medium (PAG/PEG) RDCs, lowering the $C_\alpha$ RMSD and bringing RDC Q-factors near zero.
 - **GmR58A & HR2876B**: Successful gradient-based minimization of $C_\alpha$ shift RMSD using internal coordinates (dihedrals).
 
