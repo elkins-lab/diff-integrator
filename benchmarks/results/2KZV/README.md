@@ -50,4 +50,5 @@ Optimization performed over 500 epochs using the Optax Adam optimizer.
 | Q-factor (PEG, 16 res) | 0.373 | **0.060** |
 | Structural Drift | — | **1.604 Å** RMSD |
 
-The optimizer dramatically improved the alignment to the PEG medium RDCs (Q-factor from 0.373 $\rightarrow$ 0.060) while maintaining the structural integrity of the protein (1.6 $\text{\AA}$ RMSD). This perfectly illustrates the power of `JointLoss` multi-objective refinement.
+The preliminary result is that the optimizer improved the alignment to the PEG medium RDCs (Q-factor from 0.373 $\rightarrow$ 0.060) while maintaining the structural integrity of the protein (1.6 $\text{\AA}$ RMSD).
+This potentially illustrates the power of `JointLoss` multi-objective refinement (if results are correct).
