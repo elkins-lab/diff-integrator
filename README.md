@@ -19,6 +19,16 @@ The goal of `diff-integrator` is to provide a seamless **optax**-based refinemen
 
 ---
 
+## 📚 Interactive Tutorials
+
+Experience **Diff-Integrator** directly in your browser with our Colab tutorials:
+
+| Tutorial | Audience | Description | Action |
+| :--- | :--- | :--- | :--- |
+| [**📉 Benchmark Visualization**](examples/interactive_tutorials/visualize_benchmarks.ipynb) | Graduate / researcher | Visualizes the loss descent and structural changes from the 2KZV joint-refinement benchmark using `matplotlib` and interactive `py3Dmol` structures. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/visualize_benchmarks.ipynb) |
+
+---
+
 ## ⚡ Core Components
 
 ### `IntegrativeRefiner`
