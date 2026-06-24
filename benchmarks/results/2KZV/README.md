@@ -12,43 +12,69 @@
 
 | File | Description |
 |---|---|
-| `initial.pdb` | NMR initial structure (Model 1, backbone only) |
-| `final.pdb` | Refined output structure |
-| `loss_history.npy` | Per-epoch total loss trace |
+| `initial.pdb` | NMR model 1 backbone (N, CA, C atoms; raw from RCSB) |
+| `final.pdb` | Refined backbone after 500 epochs |
+| `loss_history.npy` | Per-epoch total weighted loss trace |
 
 ---
 
 ## Benchmark Design
 
-This benchmark demonstrates the core functionality of `diff-integrator` by performing a joint multi-objective optimization using three simultaneous target functions:
-1. **$C_\alpha$ Chemical Shifts**: RMSD constraint
-2. **Residual Dipolar Couplings (RDCs)**: Dynamic Saupe tensor fitting in two distinct alignment media (PAG and PEG)
-3. **Geometry Restraint**: A weak $1.6 \text{ \AA}$ harmonic anchor to the initial NMR state to prevent unphysical backbone unravelling
+This benchmark performs a joint multi-objective optimization against three simultaneous experimental constraints:
 
-### Dynamic Tensor Fitting vs. Fixed-Tensor
+1. **$C_\alpha$ Chemical Shifts**: RMSD against 91 measured $C_\alpha$ shifts from BMRB 17020.
+2. **RDCs (PAG medium)**: MSE against 23 ¹⁵N–¹H RDCs. Primary validation metric.
+3. **RDCs (PEG medium)**: MSE against 16 ¹⁵N–¹H RDCs. Supplementary — see caution below.
+4. **Geometry Restraint**: Harmonic position restraint anchoring to NMR model 1, preventing non-physical backbone unravelling.
 
-Unlike traditional molecular dynamics solvers (like X-PLOR or `diff-biophys`) which freeze the alignment tensor for hundreds of steps to calculate gradients, `diff-integrator` fits the Saupe tensor **dynamically at every single optimization step**. 
+Optimization uses backbone dihedral angles (φ, ψ) as parameters, with a NeRF builder reconstructing Cartesian coordinates at each step.
 
-Because `diff-integrator` can auto-differentiate through the SVD (Singular Value Decomposition) used to fit the tensor, the optimizer computes the "true" gradient of the RDC landscape. This removes the need for discontinuous "refit-and-freeze" cycles, leading to smoother and more rapid descent.
+### Fixed-Tensor RDC Strategy
 
-### The Overfitting Danger
+The Saupe alignment tensor (5 free parameters: $D_a$, $R$, and 3 Euler angles) is held **fixed** during gradient descent and re-fitted from the current backbone every 50 epochs. This is the standard approach used by X-PLOR, CNS, and PALES.
 
-RDCs are extremely degenerate. Because they only measure the orientation of local bond vectors relative to a global magnetic field, an unrestrained protein will rapidly twist into a non-physical "pretzel" to satisfy the RDCs (driving the Q-factor to zero but destroying the global fold). 
+Fitting the tensor *inside* the gradient computation (differentiating through the SVD) would allow the optimizer to trivially drive Q→0 by exploiting the degeneracy between backbone orientation and tensor parameters — producing non-physical results without genuine structural improvement. `FixedTensorRDCLoss` in `diff_integrator/terms/nmr.py` enforces the correct behaviour via `jax.lax.stop_gradient`.
 
-To prevent this, this benchmark implements `diff_integrator.terms.geometry.GeometryLoss`. We balance the RDC and Chemical Shift forces against a geometric prior, finding a stable local minimum that dramatically improves the PEG alignment while preserving the native structure.
+### Why PEG Results Must Be Interpreted with Caution
+
+The Saupe tensor has 5 free parameters. A reliable fit requires the number of RDCs to substantially exceed the tensor parameters (Bax & Tjandra recommend ≥20 per medium):
+
+| Medium | RDCs | Tensor params | Ratio | Role |
+|---|---|---|---|---|
+| PAG | 23 | 5 | **4.6×** | **Primary benchmark** |
+| PEG | 16 | 5 | **3.2×** | Supplementary only ⚠️ |
+
+With only 16 data points, there exist many small backbone distortions that can satisfy the RDC constraints without globally improving the structure. Any Q(PEG) well below the published NMR medoid value (0.36) should be treated as overfitting, not genuine improvement. The benchmark script prints an explicit warning when this occurs.
 
 ---
 
 ## Results
 
-Optimization performed over 500 epochs using the Optax Adam optimizer.
+Optimization: 500 epochs, Adam optimizer (lr=0.01), tensor update every 50 epochs.
 
-| Metric | Before Refinement | After Refinement |
-|---|---|---|
-| Cα Shift RMSD | 1.542 ppm | 1.539 ppm |
-| Q-factor (PAG, 23 res) | 0.309 | **0.290** |
-| Q-factor (PEG, 16 res) | 0.373 | **0.060** |
-| Structural Drift | — | **1.604 Å** RMSD |
+| Metric | Before Refinement | After Refinement | Published Target |
+|---|---|---|---|
+| Cα RMSD | 1.542 ppm | **1.538 ppm** | — |
+| Q (PAG, 23 res) | 0.309 | **0.290** | AF2=0.22, NMR medoid=0.18 |
+| Q (PEG, 16 res) | 0.373 | 0.047 ⚠️ | AF2=0.35, NMR medoid=0.36 |
+| Structural drift | — | **1.628 Å** RMSD | — |
 
-The preliminary result is that the optimizer improved the alignment to the PEG medium RDCs (Q-factor from 0.373 $\rightarrow$ 0.060) while maintaining the structural integrity of the protein (1.6 $\text{\AA}$ RMSD).
-This potentially illustrates the power of `JointLoss` multi-objective refinement (if results are correct).
+### Interpretation
+
+**PAG (primary)**: Q improved from 0.309 → 0.290. The starting point is NMR model 1, which is not the medoid of the ensemble; the published NMR medoid target is 0.18. Continued optimization with looser geometry restraints or more epochs would be expected to approach this target.
+
+**PEG (supplementary)**: Q = 0.047 is far below the published NMR medoid (0.36), confirming overfitting to the underdetermined 16-RDC dataset. This is expected behaviour and not a claimed result. The geometry restraint successfully held the backbone to within **1.628 Å** of the native structure, preventing physically impossible distortion.
+
+---
+
+## NMR Observable Modules Used
+
+| Observable | Source |
+|---|---|
+| Cα chemical shifts | `diff_biophys.nmr.chemical_shifts.make_ca_shift_loss` |
+| RDC back-calculation | `diff_biophys.nmr.rdc.calculate_rdc_from_tensor` |
+| Fixed-tensor loss | `diff_integrator.terms.nmr.FixedTensorRDCLoss` |
+| Alignment tensor fit | `diff_biophys.nmr.rdc.fit_saupe_tensor` |
+| Q-factor | `diff_biophys.nmr.rdc.calculate_q_factor` |
+| Backbone builder | `diff_biophys.geometry.backbone.make_backbone_builder` (NeRF) |
+| Optimizer | `optax.adam` |
