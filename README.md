@@ -25,7 +25,9 @@ Experience **Diff-Integrator** directly in your browser with our Colab tutorials
 
 | Tutorial | Audience | Description | Action |
 | :--- | :--- | :--- | :--- |
-| [**📉 Benchmark Visualization**](examples/interactive_tutorials/visualize_benchmarks.ipynb) | Graduate / researcher | Visualizes the loss descent and structural changes from the 2KZV joint-refinement benchmark using `matplotlib` and interactive `py3Dmol` structures. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/visualize_benchmarks.ipynb) |
+| [**📉 Results Dashboard**](examples/interactive_tutorials/visualize_benchmarks.ipynb) | Graduate / researcher | Visualizes the loss descent, Q-factors, chemical shift accuracy, NeRF drift, and structural changes across all three benchmarks. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/visualize_benchmarks.ipynb) |
+| [**🧪 Refinement Concepts**](examples/interactive_tutorials/concepts.ipynb) | Student / researcher | Educational notebook explaining NMR observables, NeRF coordinate parameterization, RDC tensor degeneracy, and the fixed-tensor protocol. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/concepts.ipynb) |
+| [**⚠️ Method Limitations**](examples/interactive_tutorials/limitations.ipynb) | Reviewer / scientist | Honest quantitative assessment of the current method's failure modes: NeRF geometric drift, RDC overfitting on PEG data, and degrees-of-freedom imbalance. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/limitations.ipynb) |
 
 ---
 
