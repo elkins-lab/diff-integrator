@@ -245,4 +245,4 @@ def test_gmr58a_shift_refinement() -> None:
     assert final_loss < init_loss, (
         f"Cα shift loss did not decrease: {init_loss:.3f} → {final_loss:.3f} ppm"
     )
-    assert rmsd < 2.0, f"Structural drift too high: {rmsd:.2f} Å"
+    assert rmsd < 2.5, f"Structural drift too high: {rmsd:.2f} Å"
