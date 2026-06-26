@@ -1,4 +1,4 @@
 from .loss import JointLoss, LossTerm
-from .optimizer import IntegrativeRefiner
+from .optimizer import IntegrativeRefiner, RefinementResult
 
-__all__ = ["JointLoss", "LossTerm", "IntegrativeRefiner"]
+__all__ = ["JointLoss", "LossTerm", "IntegrativeRefiner", "RefinementResult"]

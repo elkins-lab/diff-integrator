@@ -70,7 +70,10 @@ def test_saxs_joint_refinement_science(small_protein_coords, saxs_setup):
     refiner = IntegrativeRefiner(loss_fn=joint_loss)
 
     # Run optimization (Cartesian parameter space)
-    final_coords, history = refiner.run(init_params=expanded_coords, epochs=150, learning_rate=0.05)
+    result = refiner.run(
+        init_params=expanded_coords, epochs=150, learning_rate=0.05
+    )
+    final_coords = result.final_params
 
     final_rg = float(compute_rg(final_coords))
 

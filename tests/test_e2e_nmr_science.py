@@ -230,14 +230,14 @@ def test_gmr58a_shift_refinement() -> None:
     init_loss = float(ca_loss((init_phi, init_psi), init_coords))
 
     refiner = IntegrativeRefiner(loss_fn=joint_loss)
-    final_params, _ = refiner.run(
+    result = refiner.run(
         init_params=(init_phi, init_psi),
         epochs=150,
         learning_rate=0.01,
         kinematics_fn=lambda p: build_backbone(p[0], p[1]),
     )
 
-    final_phi, final_psi = final_params
+    final_phi, final_psi = result.final_params
     final_coords = build_backbone(final_phi, final_psi)
     final_loss = float(ca_loss((final_phi, final_psi), final_coords))
     rmsd = kabsch_rmsd(init_coords, final_coords)

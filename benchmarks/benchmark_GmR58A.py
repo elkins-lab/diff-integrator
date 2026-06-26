@@ -130,17 +130,18 @@ def main() -> None:
     # 6. Optimize
     # ------------------------------------------------------------------
     print(f"\nRefining for {EPOCHS} epochs...")
-    final_params, history = refiner.run(
+    result = refiner.run(
         init_params=(init_phi, init_psi),
         epochs=EPOCHS,
         learning_rate=LEARNING_RATE,
         kinematics_fn=lambda p: build_backbone(p[0], p[1]),
     )
+    history = result.loss_history
 
     # ------------------------------------------------------------------
     # 7. Evaluate
     # ------------------------------------------------------------------
-    final_phi, final_psi = final_params
+    final_phi, final_psi = result.final_params
     final_coords = build_backbone(final_phi, final_psi)
     final_ca_rmsd = float(ca_loss((final_phi, final_psi), final_coords))
     rmsd = kabsch_rmsd(init_coords, final_coords)
