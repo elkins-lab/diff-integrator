@@ -1,8 +1,11 @@
 # ⚙️ Diff-Integrator: The Integrative Refinement Engine
 
 [![Tests](https://github.com/elkins-lab/diff-integrator/actions/workflows/test.yml/badge.svg)](https://github.com/elkins-lab/diff-integrator/actions/workflows/test.yml)
-[![Python 3.10+](https://img.shields.io/pypi/pyversions/diff-integrator.svg)](https://pypi.org/project/diff-integrator/)
+[![PyPI version](https://img.shields.io/pypi/v/diff-integrator.svg)](https://pypi.org/project/diff-integrator/)
+[![Python versions](https://img.shields.io/pypi/pyversions/diff-integrator.svg?cache=bust)](https://pypi.org/project/diff-integrator/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
 
 **Diff-Integrator** is a JAX-accelerated optimization engine designed for integrative structural biology. It acts as the "orchestrator" that combines differentiable observables from **[diff-biophys](https://github.com/elkins-lab/diff-biophys)** into multi-objective loss functions.
 
