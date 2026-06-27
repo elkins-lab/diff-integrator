@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from jax import grad
 
-from diff_integrator.terms.nmr import RDCLoss
+from diff_integrator.terms.nmr import FixedTensorRDCLoss, RDCLoss
 
 
 def test_rdc_loss():
@@ -64,6 +64,17 @@ def test_rdc_loss_invalid_type():
     exp_rdcs = jnp.array([10.0])
     loss_fn = RDCLoss(atom_pairs=atom_pairs, exp_rdcs=exp_rdcs, loss_type="invalid")
     import pytest
-
     with pytest.raises(ValueError):
         loss_fn(None, coords)
+
+
+def test_fixed_tensor_rdc_loss_uninitialized():
+    coords = jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    def dummy_loss(coords, tensor): return jnp.array(0.0)
+    def dummy_make(coords): return jnp.array(0.0)
+    loss_fn = FixedTensorRDCLoss(loss_fn=dummy_loss, make_tensor_fn=dummy_make)
+    
+    import pytest
+    with pytest.raises(RuntimeError, match="tensor not initialized"):
+        loss_fn(None, coords)
+
