@@ -198,11 +198,22 @@ def main() -> None:
     loss_history: list[float] = []
     weight_history: list[float] = []
 
+    # The JIT step function accepts the current weight vector as an explicit
+    # JAX array argument.  This is essential for geometry-weight annealing:
+    # JAX @jit bakes Python-float closure variables as compile-time constants,
+    # so set_weight() mutations would be invisible to the compiled XLA graph.
+    # Passing weights as a dynamic array causes JAX to substitute the live
+    # values each call without recompilation.
+    terms = joint_loss.terms  # stable reference
+
     @jax.jit
-    def step(p, state):  # type: ignore[no-untyped-def]
+    def step(p, state, current_weights):  # type: ignore[no-untyped-def]
         def objective(pp):  # type: ignore[no-untyped-def]
             c = build_backbone(pp[0], pp[1])
-            return joint_loss(pp, c)
+            total = jax.numpy.array(0.0)
+            for i, (term, _) in enumerate(terms):
+                total = total + current_weights[i] * term(pp, c)
+            return total
 
         loss_val, grads = jax.value_and_grad(objective)(p)
         updates, new_state = optimizer.update(grads, state)
@@ -220,8 +231,9 @@ def main() -> None:
         for term in rdc_terms:
             term.maybe_update_tensor(curr_coords, epoch)
 
-        # 6c. Gradient step
-        params, opt_state, loss_val = step(params, opt_state)
+        # 6c. Gradient step — pass live weights as explicit dynamic input
+        current_weights = jax.numpy.array([w for _, w in joint_loss.terms])
+        params, opt_state, loss_val = step(params, opt_state, current_weights)
         loss_history.append(float(loss_val))
 
         if (epoch + 1) % 100 == 0:

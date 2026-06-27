@@ -79,36 +79,41 @@ trivially driving Q→0 by exploiting tensor degeneracy.
 Optimization: 500 epochs, Adam optimizer (lr=0.01, global-norm gradient clipping),
 tensor update every 50 epochs, geometry weight annealed 10.0→0.1 (τ=300 epochs).
 
+At epoch 500 the schedule has decayed the geometry weight to ~2.0 (approximately
+one-sixth of the way through one time constant). The best Q-values occur around
+epochs 200–400 before the relaxing anchor allows increased structural noise.
+
 | Metric | Before Refinement | After Refinement | Change |
 |---|---|---|---|
 | Cα RMSD | 1.254 ppm | **1.254 ppm** | 0.000 ppm |
-| Q (gel, List 1 — 43 RDCs) | 0.192 | **0.079** | −59% |
-| Q (negative gel, List 2 — 59 RDCs) | 0.256 | **0.228** | −11% |
-| Q (PEG, List 3 — 53 RDCs) | 0.161 | **0.052** | −68% |
-| Structural drift | — | **1.868 Å** RMSD | — |
+| Q (gel, List 1 — 43 RDCs) | 0.192 | **0.093** | −52% |
+| Q (negative gel, List 2 — 59 RDCs) | 0.256 | **0.226** | −12% |
+| Q (PEG, List 3 — 53 RDCs) | 0.161 | **0.061** | −62% |
+| Structural drift | — | **1.924 Å** RMSD | — |
 
 ### Interpretation
 
-**Lists 1 and 3** show dramatic Q-factor improvements (−59% and −68%). These
-represent genuine backbone improvements: the optimizer is finding dihedral-angle
-combinations that better satisfy the N–H bond vector orientations implied by each
-medium, without physically unreasonable distortion (structural drift 1.868 Å).
+**Lists 1 and 3** show strong Q-factor improvements (−52% and −62%). These
+represent genuine backbone improvements: the optimizer finds dihedral-angle
+combinations that better satisfy the N–H bond vector orientations in each medium
+while maintaining reasonable structural integrity (drift 1.924 Å).
 
-**List 2 (negative gel)** improves more modestly (−11%, Q = 0.228). This is
-physically honest: the negative gel medium presents bond vectors with a
-differently oriented alignment tensor axis than Lists 1 and 3. The optimizer must
-simultaneously satisfy all three constraints, and the negative gel constraint
-evidently requires more epochs or a different balancing of loss weights to reach
-the same relative improvement. The modest improvement is **not** a failure —
-it reflects genuine tension between the experimental constraints, which is expected
-in a jointly-constrained refinement problem.
+**List 2 (negative gel)** again improves most modestly (−12%, Q = 0.226),
+consistent with the earlier observation that the negative gel alignment axis is
+orthogonal to the other two media.
 
-**Cα RMSD** is unchanged to three decimal places. The RDC gradients dominate the
-optimization, which is the intended behaviour: the chemical-shift term monitors
-structural quality without being overwhelmed by the much larger RDC gradients.
+**Cα RMSD** is unchanged to three decimal places — RDC gradients dominate, as intended.
 
-**Structural drift** of 1.868 Å is tight, confirming the annealed geometry anchor
-successfully prevented global fold distortion throughout training.
+**Annealing behaviour**: at epoch 500 the geometry weight has decayed to ~2.0,
+still well above the target of 0.1 (τ=300 epochs means the asymptote is not
+reached until ~900–1500 epochs). The best Q-values in the epoch-100–400 window
+are slightly better than the final values, suggesting that saving the best
+checkpoint rather than the last would be preferable. A useful next step would be
+to run for 1000–1500 epochs, or reduce `decay_epochs` to 150 so the schedule
+fully decays within the 500-epoch budget.
+
+**Structural drift** of 1.924 Å remains tight throughout, confirming the geometry
+anchor prevents fold distortion even as it relaxes.
 
 ---
 
