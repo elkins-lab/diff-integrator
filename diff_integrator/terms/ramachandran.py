@@ -186,6 +186,7 @@ class RamachandranLoss(LossTerm):
         phi, psi = params
 
         if self.basin_centers is not None:
+            assert self.sigma_per_res is not None
             # -----------------------------------------------------------------
             # Sequence-aware path  (vectorised, JIT-friendly)
             # -----------------------------------------------------------------
