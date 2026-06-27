@@ -4,6 +4,7 @@ import jax.numpy as jnp
 
 from diff_integrator.loss import JointLoss, LossTerm
 from diff_integrator.optimizer import IntegrativeRefiner, RefinementResult
+from diff_integrator.schedules import ExponentialDecaySchedule
 
 
 class DummyTargetLoss(LossTerm):
@@ -138,3 +139,121 @@ def test_optimizer_gradient_clipping():
 
     assert result.loss_history[-1] < result.loss_history[0]
     assert jnp.allclose(result.final_params, target_coords, atol=1e-1)
+
+
+# ---------------------------------------------------------------------------
+# ExponentialDecaySchedule tests
+# ---------------------------------------------------------------------------
+
+
+def test_exponential_decay_schedule_initial():
+    """At epoch 0 the weight equals initial_weight."""
+    sched = ExponentialDecaySchedule(initial_weight=10.0, final_weight=0.1, decay_epochs=200)
+    assert abs(sched(0) - 10.0) < 1e-9
+
+
+def test_exponential_decay_schedule_asymptote():
+    """At a very large epoch the weight is close to final_weight."""
+    sched = ExponentialDecaySchedule(initial_weight=10.0, final_weight=0.1, decay_epochs=100)
+    # After 10 time-constants (1000 epochs) should be within 0.01 of final
+    assert abs(sched(1000) - 0.1) < 0.01
+
+
+def test_exponential_decay_schedule_monotonic():
+    """Weights should be strictly decreasing for initial > final."""
+    sched = ExponentialDecaySchedule(initial_weight=5.0, final_weight=0.5, decay_epochs=100)
+    weights = [sched(e) for e in range(0, 500, 10)]
+    for a, b in zip(weights, weights[1:]):
+        assert a > b, f"Not monotonically decreasing: {a} <= {b}"
+
+
+def test_exponential_decay_schedule_one_time_constant():
+    """At epoch == decay_epochs, ~36.8% of the initial-to-final range remains."""
+    import math
+    sched = ExponentialDecaySchedule(initial_weight=10.0, final_weight=0.0, decay_epochs=200)
+    expected = 10.0 * math.exp(-1)  # ≈ 3.679
+    assert abs(sched(200) - expected) < 1e-9
+
+
+def test_exponential_decay_schedule_invalid_decay_epochs():
+    """decay_epochs <= 0 should raise ValueError."""
+    import pytest
+    with pytest.raises(ValueError, match="decay_epochs must be > 0"):
+        ExponentialDecaySchedule(10.0, 0.1, 0)
+
+
+def test_exponential_decay_schedule_invalid_final_weight():
+    """Negative final_weight should raise ValueError."""
+    import pytest
+    with pytest.raises(ValueError, match="final_weight must be >= 0"):
+        ExponentialDecaySchedule(10.0, -1.0, 100)
+
+
+# ---------------------------------------------------------------------------
+# weight_schedules integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_weight_schedules_applied_to_loss():
+    """weight_schedules should update term weight before each gradient step."""
+    target_coords = jnp.array([[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]])
+    init_coords = jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+
+    term = DummyTargetLoss(target_coords)
+    loss_fn = JointLoss([(term, 99.0)])  # Initial weight deliberately wrong
+    refiner = IntegrativeRefiner(loss_fn=loss_fn)
+
+    # Schedule: always return weight 1.0 regardless of epoch
+    constant_schedule = lambda epoch: 1.0  # noqa: E731
+
+    result = refiner.run(
+        init_params=init_coords,
+        epochs=10,
+        learning_rate=0.1,
+        weight_schedules={0: constant_schedule},
+    )
+
+    # weight_history for term 0 should have 10 entries, all == 1.0
+    assert 0 in result.weight_history
+    assert len(result.weight_history[0]) == 10
+    assert all(abs(w - 1.0) < 1e-9 for w in result.weight_history[0])
+
+
+def test_weight_history_recorded_in_result():
+    """weight_history keys match weight_schedules keys; length equals epochs_run."""
+    target_coords = jnp.array([[1.0, 0.0, 0.0]])
+    init_coords = jnp.array([[0.0, 0.0, 0.0]])
+
+    loss_fn = JointLoss([
+        (DummyTargetLoss(target_coords), 1.0),
+        (DummySumLoss(), 0.5),
+    ])
+    refiner = IntegrativeRefiner(loss_fn=loss_fn)
+
+    sched_0 = ExponentialDecaySchedule(5.0, 0.1, 50)
+    sched_1 = ExponentialDecaySchedule(2.0, 0.5, 50)
+
+    result = refiner.run(
+        init_params=init_coords,
+        epochs=30,
+        weight_schedules={0: sched_0, 1: sched_1},
+    )
+
+    assert set(result.weight_history.keys()) == {0, 1}
+    assert len(result.weight_history[0]) == 30
+    assert len(result.weight_history[1]) == 30
+    # First recorded weight should match schedule at epoch 0
+    assert abs(result.weight_history[0][0] - sched_0(0)) < 1e-6
+    assert abs(result.weight_history[1][0] - sched_1(0)) < 1e-6
+
+
+def test_no_weight_history_without_schedules():
+    """weight_history is empty when no weight_schedules are provided."""
+    target_coords = jnp.array([[1.0, 0.0, 0.0]])
+    init_coords = jnp.array([[0.0, 0.0, 0.0]])
+
+    loss_fn = JointLoss([(DummyTargetLoss(target_coords), 1.0)])
+    refiner = IntegrativeRefiner(loss_fn=loss_fn)
+
+    result = refiner.run(init_params=init_coords, epochs=5)
+    assert result.weight_history == {}

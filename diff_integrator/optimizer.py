@@ -17,6 +17,7 @@ class RefinementResult:
     loss_history: list[float]
     per_term_history: dict[str, list[float]] = field(default_factory=dict)
     validation_history: list[float] = field(default_factory=list)
+    weight_history: dict[int, list[float]] = field(default_factory=dict)
     epochs_run: int = 0
     stopped_early: bool = False
 
@@ -44,6 +45,7 @@ class IntegrativeRefiner:
         min_delta: float = 1e-5,
         validation_loss: JointLoss | None = None,
         log_interval: int = 1,
+        weight_schedules: dict[int, Callable[[int], float]] | None = None,
     ) -> RefinementResult:
         """
         Run the refinement optimization.
@@ -65,6 +67,14 @@ class IntegrativeRefiner:
             validation_loss: A JointLoss evaluated each epoch for
                 diagnostics but not used in the gradient.
             log_interval: How often to evaluate per-term diagnostics.
+            weight_schedules: Optional mapping from term index to a
+                callable ``(epoch: int) -> float``.  Before each gradient
+                step the corresponding ``JointLoss`` term weight is updated
+                to ``schedule_fn(epoch)``.  Use
+                :class:`~diff_integrator.schedules.ExponentialDecaySchedule`
+                for the annealed geometry restraint pattern.  The weight
+                values applied each epoch are recorded in
+                ``RefinementResult.weight_history``.
 
         Returns:
             A RefinementResult with all tracked data.
@@ -105,12 +115,22 @@ class IntegrativeRefiner:
         loss_history: list[float] = []
         per_term_history: dict[str, list[float]] = {}
         validation_history: list[float] = []
+        weight_history: dict[int, list[float]] = {
+            idx: [] for idx in (weight_schedules or {})
+        }
         best_loss = float("inf")
         epochs_since_improvement = 0
         stopped_early = False
         epochs_run = 0
 
         for epoch in range(epochs):
+            # Apply weight schedules before the gradient step
+            if weight_schedules:
+                for term_idx, schedule_fn in weight_schedules.items():
+                    new_weight = schedule_fn(epoch)
+                    self.loss_fn.set_weight(term_idx, new_weight)
+                    weight_history[term_idx].append(new_weight)
+
             params, opt_state, loss_val = step(params, opt_state)
             current_loss = float(loss_val)
             loss_history.append(current_loss)
@@ -151,6 +171,7 @@ class IntegrativeRefiner:
             loss_history=loss_history,
             per_term_history=per_term_history,
             validation_history=validation_history,
+            weight_history=weight_history,
             epochs_run=epochs_run,
             stopped_early=stopped_early,
         )
