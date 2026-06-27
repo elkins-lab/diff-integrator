@@ -96,14 +96,32 @@ class IntegrativeRefiner:
         opt_state = optimizer.init(init_params)
         params = init_params
 
-        # Define the step function
+        # Define the step function.
+        #
+        # The weights are passed as an explicit JAX array rather than being
+        # captured as Python-float closure variables.  This is critical for
+        # weight_schedules to work correctly: JAX @jit traces the function
+        # once and caches the compiled XLA code keyed on input shapes/dtypes.
+        # Python floats captured in the closure are baked in as compile-time
+        # constants — changing them via set_weight would have NO effect on
+        # the compiled computation.  By passing weights as a dynamic array
+        # argument, JAX substitutes the current values each call without
+        # recompilation, while value_and_grad still differentiates only
+        # w.r.t. current_params (not the weights).
+        terms = self.loss_fn.terms  # stable reference to the term list
+
         @jit
         def step(
-            current_params: Any, current_opt_state: optax.OptState
+            current_params: Any,
+            current_opt_state: optax.OptState,
+            current_weights: jnp.ndarray,
         ) -> tuple[Any, optax.OptState, jnp.ndarray]:
             def objective(p: Any) -> jnp.ndarray:
                 coords = kinematics_fn(p)
-                return self.loss_fn(p, coords)
+                total = jnp.array(0.0)
+                for i, (term, _) in enumerate(terms):
+                    total = total + current_weights[i] * term(p, coords)
+                return total
 
             loss_val, grads = value_and_grad(objective)(current_params)
             updates, new_opt_state = optimizer.update(
@@ -124,14 +142,15 @@ class IntegrativeRefiner:
         epochs_run = 0
 
         for epoch in range(epochs):
-            # Apply weight schedules before the gradient step
+            # Apply weight schedules, then pass current weights to JIT step
             if weight_schedules:
                 for term_idx, schedule_fn in weight_schedules.items():
                     new_weight = schedule_fn(epoch)
                     self.loss_fn.set_weight(term_idx, new_weight)
                     weight_history[term_idx].append(new_weight)
 
-            params, opt_state, loss_val = step(params, opt_state)
+            current_weights = jnp.array([w for _, w in self.loss_fn.terms])
+            params, opt_state, loss_val = step(params, opt_state, current_weights)
             current_loss = float(loss_val)
             loss_history.append(current_loss)
             epochs_run = epoch + 1
