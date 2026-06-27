@@ -27,9 +27,9 @@ This benchmark refines HR2876B using $C_\alpha$ chemical shifts against the CASD
 
 ### NeRF Reconstruction Drift
 
-`make_backbone_builder` uses ideal peptide bond lengths and angles (from the NeRF parameterization) rather than the actual PDB geometry. Over 107 residues this accumulates to significant positional drift. The structural RMSD of **6.443 Å** in the results below is measured against the NeRF-rebuilt starting structure, *not* the raw PDB model 1 — so this value reflects both genuine optimization displacement and NeRF-vs-PDB geometric differences.
+`make_backbone_builder` uses ideal peptide bond lengths and angles (from the NeRF parameterization) rather than the actual PDB geometry. Over 107 residues this accumulates to significant positional drift. The structural RMSD of **6.356 Å** in the results below is measured against the NeRF-rebuilt starting structure, *not* the raw PDB model 1 — so this value reflects both genuine optimization displacement and NeRF-vs-PDB geometric differences.
 
-The diff-biophys HR2876B benchmark independently characterizes this drift as ~14 Å Cα RMSD between raw PDB and the NeRF-rebuilt start. The 6.443 Å reported here is relative to the NeRF starting point (i.e., the geometry anchor is doing significant work restraining the structure against NeRF drift).
+The diff-biophys HR2876B benchmark independently characterizes this drift as ~14 Å Cα RMSD between raw PDB and the NeRF-rebuilt start. The 6.356 Å reported here is relative to the NeRF starting point (i.e., the geometry anchor is doing significant work restraining the structure against NeRF drift).
 
 ---
 
@@ -39,12 +39,12 @@ Optimization: 500 epochs, Adam (lr=0.01), geometry restraint weight=1.0.
 
 | Metric | Before Refinement | After Refinement | Change |
 |---|---|---|---|
-| Cα RMSD | 1.710 ppm | **1.705 ppm** | −0.005 ppm |
-| Structural drift | — | **6.443 Å** RMSD (vs NeRF start) | — |
+| Cα RMSD | 1.710 ppm | **1.699 ppm** | −0.011 ppm |
+| Structural drift | — | **6.356 Å** RMSD (vs NeRF start) | — |
 
 ### Interpretation
 
-The $C_\alpha$ shift RMSD improved by only **0.005 ppm**. The large structural drift (6.443 Å) despite the geometry restraint is attributable to the NeRF reconstruction drift across 107 residues: the optimizer is simultaneously fighting the geometry anchor pulling towards the NeRF-idealized geometry and the shift gradient pulling towards better shift agreement. The two competing forces largely cancel, producing minimal net shift improvement.
+The $C_\alpha$ shift RMSD improved by only **0.011 ppm**. The large structural drift (6.356 Å) despite the geometry restraint is attributable to the NeRF reconstruction drift across 107 residues: the optimizer is simultaneously fighting the geometry anchor pulling towards the NeRF-idealized geometry and the shift gradient pulling towards better shift agreement. The two competing forces largely cancel, producing minimal net shift improvement.
 
 The diff-biophys HR2876B benchmark documents the same phenomenon: the NeRF-rebuilt backbone already starts ~14 Å from the raw PDB structure, so the effective gradient landscape is significantly different from what would be obtained by optimizing directly in Cartesian space.
 

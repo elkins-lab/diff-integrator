@@ -41,11 +41,11 @@ Optimization: 500 epochs, Adam (lr=0.01), geometry restraint weight=1.0.
 | Metric | Before Refinement | After Refinement | Change |
 |---|---|---|---|
 | Cα RMSD | 1.254 ppm | **1.253 ppm** | −0.001 ppm |
-| Structural drift | — | **1.837 Å** RMSD | — |
+| Structural drift | — | **2.050 Å** RMSD | — |
 
 ### Interpretation
 
-The $C_\alpha$ shift RMSD improved by only **0.001 ppm** over 500 epochs. This is a physically honest result: the GmR58A NMR model 1 already achieves a good chemical shift RMSD of 1.254 ppm, and the geometry restraint (necessary to prevent structural unravelling) competes against the shift gradient, limiting net improvement. Notably, the structural drift of 1.837 Å is modest and confirms the geometry anchor is working correctly.
+The $C_\alpha$ shift RMSD improved by only **0.001 ppm** over 500 epochs. This is a physically honest result: the GmR58A NMR model 1 already achieves a good chemical shift RMSD of 1.254 ppm, and the geometry restraint (necessary to prevent structural unravelling) competes against the shift gradient, limiting net improvement. Notably, the structural drift of 2.050 Å is modest and confirms the geometry anchor is working correctly.
 
 This contrasts with the diff-biophys benchmark Phase 1 result (0.212 ppm improvement) because diff-biophys optimizes *without* a geometry restraint — trading structural accuracy for shift fit. The diff-integrator result with geometry anchoring is the more physically realistic scenario for genuine structure refinement.
 
