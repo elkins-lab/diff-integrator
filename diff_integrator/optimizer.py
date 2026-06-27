@@ -18,6 +18,8 @@ class RefinementResult:
     per_term_history: dict[str, list[float]] = field(default_factory=dict)
     validation_history: list[float] = field(default_factory=list)
     weight_history: dict[int, list[float]] = field(default_factory=dict)
+    best_params: Any = None
+    best_epoch: int = 0
     epochs_run: int = 0
     stopped_early: bool = False
 
@@ -77,7 +79,13 @@ class IntegrativeRefiner:
                 ``RefinementResult.weight_history``.
 
         Returns:
-            A RefinementResult with all tracked data.
+            A :class:`RefinementResult` with all tracked data.
+
+            ``best_params`` holds the parameter values at the epoch with the
+            lowest loss — measured by ``validation_loss`` if supplied, otherwise
+            by the total training loss.  ``best_epoch`` records which epoch
+            that was (0-based).  ``final_params`` always holds the last
+            iterate, preserving backward compatibility.
         """
         if optimizer is None:
             optimizer = optax.chain(
@@ -136,7 +144,13 @@ class IntegrativeRefiner:
         weight_history: dict[int, list[float]] = {
             idx: [] for idx in (weight_schedules or {})
         }
-        best_loss = float("inf")
+        # Best-checkpoint tracking: keyed on validation_loss when provided,
+        # otherwise on total training loss.
+        _best_metric = float("inf")
+        best_params = init_params
+        best_epoch = 0
+        _track_by_validation = validation_loss is not None
+        best_loss_for_patience = float("inf")
         epochs_since_improvement = 0
         stopped_early = False
         epochs_run = 0
@@ -173,11 +187,22 @@ class IntegrativeRefiner:
                     validation_loss(params, coords)
                 )
                 validation_history.append(val_loss)
+                # Best-checkpoint keyed on validation loss
+                if _track_by_validation and val_loss < _best_metric:
+                    _best_metric = val_loss
+                    best_params = params
+                    best_epoch = epoch
+
+            # Best-checkpoint keyed on total training loss (no validation_loss)
+            if not _track_by_validation and current_loss < _best_metric:
+                _best_metric = current_loss
+                best_params = params
+                best_epoch = epoch
 
             # Early stopping
             if patience > 0:
-                if current_loss < best_loss - min_delta:
-                    best_loss = current_loss
+                if current_loss < best_loss_for_patience - min_delta:
+                    best_loss_for_patience = current_loss
                     epochs_since_improvement = 0
                 else:
                     epochs_since_improvement += 1
@@ -191,6 +216,8 @@ class IntegrativeRefiner:
             per_term_history=per_term_history,
             validation_history=validation_history,
             weight_history=weight_history,
+            best_params=best_params,
+            best_epoch=best_epoch,
             epochs_run=epochs_run,
             stopped_early=stopped_early,
         )

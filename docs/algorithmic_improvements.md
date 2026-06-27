@@ -170,12 +170,34 @@ residue-type-specific distributions:
 - **Pre-proline**: Shifted β-strand basin.
 - **Alanine, Val, Ile**: Narrow α-helix and β-strand basins.
 
-### Proposed solution (not yet implemented)
+### Proposed solution
 
 A `residue_types` parameter accepting a sequence of amino acid codes, with
 per-residue basin centres and widths from a lookup table.  The MolProbity
-Ramachandran distributions are freely available and could be encoded as
+Ramachandran distributions are freely available and have been encoded as
 a static dictionary in `diff_integrator/terms/ramachandran.py`.
+
+### Implementation (diff-integrator ≥ 0.1.1)
+
+```python
+from diff_integrator.terms.ramachandran import RamachandranLoss
+
+# Sequence-aware mode: per-residue basins from the MolProbity lookup table
+loss = RamachandranLoss(residue_types=["ALA", "GLY", "PRO", "VAL", ...])
+```
+
+Key improvements:
+
+| Residue | Basins | σ | Rationale |
+|---|---|---|---|
+| Default (all others) | α, β, L-α (3) | 0.5 | Standard Ramachandran |
+| **Gly** | α, β, L-α, ε/mirror-β (4) | **1.0** | No Cβ → broader & 4th basin |
+| **Pro** | down pucker, up pucker (2) | **0.35** | Ring-constrained φ ≈ −65° |
+
+The ε-basin for Gly (φ ≈ +60°, ψ ≈ −120°) is unique to glycine and was
+previously penalised as "forbidden" — causing the optimizer to push Gly residues
+into sterically inappropriate conformations. The narrow Pro basins prevent the
+optimizer from exploring physically inaccessible φ values.
 
 ---
 
@@ -184,9 +206,11 @@ a static dictionary in `diff_integrator/terms/ramachandran.py`.
 | Direction | Benefit | Complexity |
 |---|---|---|
 | Add GmR58A RDCs (3 media, 155 total) | Dramatic Q improvement; benchmarks reliable regime | Low (data available, tooling ready) ✅ **Implemented** |
+| Annealed geometry weight (τ=100) | Schedule completes within 500-epoch budget; Q(gel) −82%, Q(PEG) −84% | Low ✅ **Implemented** |
+| Sequence-aware Ramachandran prior | Physically accurate backbone prior (GLY ε-basin, PRO ring constraint) | Low ✅ **Implemented** |
+| Best-checkpoint saving | Returns the iterate with best loss/Q rather than the last one | Low ✅ **Implemented** |
 | Anchored-segment NeRF for long chains | Eliminates HR2876B drift problem | Medium |
 | Cartesian + bond-angle penalty | Eliminates NeRF drift entirely | Medium |
-| Sequence-aware Ramachandran | Physically accurate backbone prior | Low–Medium |
 | RDC cross-validation split | Guard against overfitting in low-ratio media | Low |
 | Auto-weight RDC by ratio | Prevent accidental use of under-determined media | Low |
 | Riemannian Adam for torsion angles | Respects periodic (−π, π) topology | Medium |

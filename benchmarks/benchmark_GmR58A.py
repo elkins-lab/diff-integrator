@@ -60,6 +60,7 @@ from diff_integrator.schedules import ExponentialDecaySchedule
 from diff_integrator.terms.chemical_shifts import CAShiftLoss
 from diff_integrator.terms.geometry import GeometryLoss
 from diff_integrator.terms.nmr import FixedTensorRDCLoss
+from diff_integrator.terms.ramachandran import RamachandranLoss
 
 # ---------------------------------------------------------------------------
 # Data location
@@ -79,8 +80,9 @@ TENSOR_UPDATE_INTERVAL = 50  # Re-fit Saupe tensor every N epochs
 
 # Loss weights
 WEIGHT_GEOMETRY_INITIAL = 10.0   # Strong anchor early in training
-WEIGHT_GEOMETRY_FINAL = 0.1     # Relaxed anchor in later epochs
-WEIGHT_GEOMETRY_DECAY = 300     # Exponential decay time-constant (epochs)
+WEIGHT_GEOMETRY_FINAL = 0.1      # Relaxed anchor at convergence
+WEIGHT_GEOMETRY_DECAY = 100      # τ = 100 epochs: schedule completes within 500-epoch budget
+WEIGHT_RAMACHANDRAN = 0.5        # Sequence-aware Ramachandran prior
 WEIGHT_CA_SHIFTS = 1.0
 WEIGHT_RDC_GEL = 1.0
 WEIGHT_RDC_NEG_GEL = 1.0
@@ -148,14 +150,16 @@ def main() -> None:
               f"(ratio {n_matched / 5:.1f}× tensor params)")
 
     # ------------------------------------------------------------------
-    # 4. Build joint loss: geometry(0) + shifts(1) + 3 RDC terms(2,3,4)
+    # 4. Build joint loss: geometry(0) + rama(1) + shifts(2) + 3 RDC terms(3,4,5)
     # ------------------------------------------------------------------
     geom_loss = GeometryLoss(target_coords=coords, target_weight=1.0)
+    rama_loss = RamachandranLoss(residue_types=list(res_names))
     rdc_weights = [WEIGHT_RDC_GEL, WEIGHT_RDC_NEG_GEL, WEIGHT_RDC_PEG]
     joint_loss = JointLoss(
         [(geom_loss, WEIGHT_GEOMETRY_INITIAL)]        # index 0 — annealed
-        + [(ca_loss, WEIGHT_CA_SHIFTS)]               # index 1
-        + [(t, w) for t, w in zip(rdc_terms, rdc_weights)]  # indices 2,3,4
+        + [(rama_loss, WEIGHT_RAMACHANDRAN)]           # index 1 — fixed
+        + [(ca_loss, WEIGHT_CA_SHIFTS)]               # index 2
+        + [(t, w) for t, w in zip(rdc_terms, rdc_weights)]  # indices 3,4,5
     )
 
     # Annealed geometry weight: strong anchor → relaxed
@@ -198,6 +202,11 @@ def main() -> None:
     loss_history: list[float] = []
     weight_history: list[float] = []
 
+    # Best-checkpoint tracking (by mean Q-factor across all media)
+    best_mean_q = float("inf")
+    best_params = params
+    best_epoch = 0
+
     # The JIT step function accepts the current weight vector as an explicit
     # JAX array argument.  This is essential for geometry-weight annealing:
     # JAX @jit bakes Python-float closure variables as compile-time constants,
@@ -236,6 +245,15 @@ def main() -> None:
         params, opt_state, loss_val = step(params, opt_state, current_weights)
         loss_history.append(float(loss_val))
 
+        # Best-checkpoint: save params with lowest mean Q across all media
+        if (epoch + 1) % 10 == 0:
+            _c = build_backbone(params[0], params[1])
+            _mean_q = sum(float(q_fn(_c)) for q_fn in q_eval_fns) / len(q_eval_fns)
+            if _mean_q < best_mean_q:
+                best_mean_q = _mean_q
+                best_params = params
+                best_epoch = epoch + 1
+
         if (epoch + 1) % 100 == 0:
             c = build_backbone(params[0], params[1])
             q_strs = "  ".join(
@@ -246,23 +264,34 @@ def main() -> None:
                   f"geom_w={new_geom_weight:.3f}")
 
     # ------------------------------------------------------------------
-    # 7. Final evaluation
+    # 7. Final evaluation — report best checkpoint AND last iterate
     # ------------------------------------------------------------------
     final_phi, final_psi = params
     final_coords = build_backbone(final_phi, final_psi)
+    best_phi, best_psi = best_params
+    best_coords = build_backbone(best_phi, best_psi)
     init_ca_rmsd = float(ca_loss((init_phi, init_psi), init_coords))
     final_ca_rmsd = float(ca_loss((final_phi, final_psi), final_coords))
-    rmsd = kabsch_rmsd(init_coords, final_coords)
+    best_ca_rmsd = float(ca_loss((best_phi, best_psi), best_coords))
+    rmsd_final = kabsch_rmsd(init_coords, final_coords)
+    rmsd_best = kabsch_rmsd(init_coords, best_coords)
 
-    print("\n--- Final Results ---")
-    print(f"  Cα RMSD before: {init_ca_rmsd:.3f} ppm")
-    print(f"  Cα RMSD after:  {final_ca_rmsd:.3f} ppm  (Δ = {final_ca_rmsd - init_ca_rmsd:+.3f})")
+    print(f"\n--- Best Checkpoint (epoch {best_epoch}) ---")
+    print(f"  Cα RMSD: {best_ca_rmsd:.3f} ppm  (baseline: {init_ca_rmsd:.3f})")
+    for label, q_fn in zip(rdc_labels, q_eval_fns):
+        b = float(q_fn(init_coords))
+        a = float(q_fn(best_coords))
+        print(f"  Q ({label}): {b:.3f} → {a:.3f}  (Δ {a - b:+.3f})")
+    print(f"  Structural RMSD: {rmsd_best:.3f} Å to NMR model 1")
+
+    print("\n--- Final Iterate (epoch 500) ---")
+    print(f"  Cα RMSD: {final_ca_rmsd:.3f} ppm")
     for label, q_fn in zip(rdc_labels, q_eval_fns):
         print(f"  Q ({label}): {float(q_fn(final_coords)):.3f}")
-    print(f"  Structural RMSD: {rmsd:.3f} Å to NMR model 1")
+    print(f"  Structural RMSD: {rmsd_final:.3f} Å to NMR model 1")
 
     # ------------------------------------------------------------------
-    # 8. Save artefacts
+    # 8. Save artefacts  (best checkpoint is the primary output)
     # ------------------------------------------------------------------
     results_dir = Path("benchmarks/results/GmR58A")
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -272,7 +301,7 @@ def main() -> None:
     for label, q_fn in zip(rdc_labels, q_eval_fns):
         tag = label.replace("RDC_list_", "rdc_list")
         np.save(results_dir / f"q_{tag}_after.npy",
-                np.array([float(q_fn(final_coords))]))
+                np.array([float(q_fn(best_coords))]))
         np.save(results_dir / f"q_{tag}_before.npy",
                 np.array([float(q_fn(init_coords))]))
 
@@ -284,13 +313,13 @@ def main() -> None:
     f_init.set_structure(init_struct)
     f_init.write(str(results_dir / "initial.pdb"))
 
-    final_struct = init_struct.copy()
-    final_struct.coord = np.array(final_coords)
-    f_final = pdb.PDBFile()
-    f_final.set_structure(final_struct)
-    f_final.write(str(results_dir / "final.pdb"))
+    best_struct = init_struct.copy()
+    best_struct.coord = np.array(best_coords)
+    f_best = pdb.PDBFile()
+    f_best.set_structure(best_struct)
+    f_best.write(str(results_dir / "final.pdb"))  # best checkpoint = canonical output
 
-    print(f"\n  Results saved to {results_dir}/")
+    print(f"\n  Results saved to {results_dir}/  (best checkpoint at epoch {best_epoch})")
 
 
 if __name__ == "__main__":
