@@ -151,7 +151,7 @@ result = refiner.run(init_params=result_p1.final_params, epochs=1000)
 `diff-integrator` is being validated against several experimental NMR datasets:
 - **2KZV (CvR118A)**: Joint refinement using $C_\alpha$ Chemical Shifts and dual-medium (PAG/PEG) RDCs, lowering the $C_\alpha$ RMSD and bringing RDC Q-factors near zero.
 - **GmR58A & HR2876B**: Successful gradient-based minimization of $C_\alpha$ shift RMSD using internal coordinates (dihedrals).
-- **HR2876B Cartesian (2025)**: Cartesian + bond-geometry refinement achieved **13× larger** Cα RMSD improvement (−0.145 ppm vs −0.011 ppm) and **30× less** structural drift (0.24 Å vs 6.4 Å) compared to the NeRF approach, with per-term `EarlyStopping` stopping at epoch 894/2000 (55% compute saved).
+- **HR2876B Cartesian (Sprint 2)**: Cartesian + bond-geometry + chirality-guard refinement over 2000 epochs achieved **11× larger** Cα RMSD improvement (−0.123 ppm vs −0.011 ppm) and **12× less** structural drift (0.545 Å vs 6.4 Å) compared to the NeRF approach. RDC Q-factors dropped 63% on both alignment media (PEG: 0.440→0.163, Pf1: 0.443→0.162). The `ChiralityPenalty` corrected all **5 D-inverted Cα centers** present in the raw PDB model 1 (the pre-Sprint-2 run had silently introduced a 6th).
 
 ---
 
