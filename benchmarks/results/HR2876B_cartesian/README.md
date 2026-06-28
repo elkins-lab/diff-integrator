@@ -4,7 +4,14 @@
 **NESG Target**: HR2876B
 **PDB**: [2LTM](https://www.rcsb.org/structure/2LTM) | **BMRB**: [18489](https://bmrb.io/data_library/summary/index.php?bmrbId=18489)
 
-**Demonstrates**: Cartesian + bond-angle penalty parameterisation, eliminating NeRF geometric drift.
+**Demonstrates**: Cartesian + bond-geometry penalty parameterisation, eliminating NeRF geometric drift.
+
+> [!NOTE]
+> **Pending rerun** — The benchmark script was updated in Sprint 2 to add `ChiralityPenalty`
+> (weight 20.0) after finding that the raw PDB 2LTM model 1 contains **5 D-inverted Cα
+> centers**, and the previous run produced **6** (one additional inversion).  The results
+> below are from the pre-chirality-guard run.  A full rerun is required to update the
+> numbers.
 
 ---
 
@@ -42,6 +49,9 @@ The Cartesian approach eliminates this problem entirely by optimising directly i
 | `CartesianCAShiftLoss` | 1.0 | Cα chemical shift RMSD (ppm) |
 | `BondLengthPenalty` | 50.0 | Harmonic restraint on 320 backbone bonds |
 | `BondAnglePenalty` | 10.0 | Harmonic restraint on 319 backbone angles |
+| `ChiralityPenalty` | 20.0 | Half-harmonic Cα L→D inversion guard (Sprint 2) |
+| `FixedTensorRDCLoss` (PEG) | auto | 15N-1H RDC list 1, PEG alignment medium |
+| `FixedTensorRDCLoss` (Pf1) | auto | 15N-1H RDC list 2, Pf1 phage medium |
 
 ### Annealed position anchor
 

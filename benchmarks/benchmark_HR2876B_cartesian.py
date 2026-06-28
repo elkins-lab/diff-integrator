@@ -90,6 +90,7 @@ from diff_integrator.optimizer import EarlyStopping, IntegrativeRefiner
 from diff_integrator.schedules import ExponentialDecaySchedule
 from diff_integrator.terms.bond_geometry import make_backbone_bond_geometry
 from diff_integrator.terms.chemical_shifts import CartesianCAShiftLoss
+from diff_integrator.terms.chirality import make_backbone_chirality
 from diff_integrator.terms.geometry import GeometryLoss
 from diff_integrator.terms.nmr import FixedTensorRDCLoss, make_rdc_cv_refinement_fns
 
@@ -114,6 +115,7 @@ WEIGHT_ANCHOR_DECAY   = 100     # τ epochs
 
 WEIGHT_BOND      = 50.0
 WEIGHT_ANGLE     = 10.0
+WEIGHT_CHIRALITY = 20.0   # half-harmonic Cα L→D inversion guard
 WEIGHT_CA_SHIFTS = 1.0
 BASE_WEIGHT_RDC  = 1.0   # reference at ideal 10× overdetermination
 
@@ -224,7 +226,14 @@ def main() -> None:
     print(f"  Initial angle RMSD: {angle_pen.angle_rmsd_deg(coords):.4f}°")
 
     # ------------------------------------------------------------------
-    # 5. Annealed position anchor  (index 0)
+    # 5. Chirality guard  (index 6)
+    # ------------------------------------------------------------------
+    chirality_pen = make_backbone_chirality(n_residues=n_res)
+    print(f"Chirality penalty:   {chirality_pen.n_centers} Cα centers "
+          f"(weight={WEIGHT_CHIRALITY})")
+
+    # ------------------------------------------------------------------
+    # 6. Annealed position anchor  (index 0)
     # ------------------------------------------------------------------
     anchor_loss     = GeometryLoss(target_coords=coords, target_weight=1.0)
     anchor_schedule = ExponentialDecaySchedule(
@@ -234,27 +243,29 @@ def main() -> None:
     )
 
     # ------------------------------------------------------------------
-    # 6. Joint loss
+    # 7. Joint loss
     #    index 0 → anchor (annealed)       weight_schedules={0: anchor_schedule}
     #    index 1 → Cα shifts               ← EarlyStopping watches this
     #    index 2 → bond-length penalty
     #    index 3 → bond-angle penalty
     #    index 4 → RDC list 1 (PEG)
     #    index 5 → RDC list 2 (Pf1)
+    #    index 6 → chirality guard (always on — no schedule)
     # ------------------------------------------------------------------
     joint_loss = JointLoss([
-        (anchor_loss, WEIGHT_ANCHOR_INITIAL),
-        (ca_loss,     WEIGHT_CA_SHIFTS),
-        (bond_pen,    WEIGHT_BOND),
-        (angle_pen,   WEIGHT_ANGLE),
-        (rdc_term1,   weight_rdc1),
-        (rdc_term2,   weight_rdc2),
+        (anchor_loss,    WEIGHT_ANCHOR_INITIAL),
+        (ca_loss,        WEIGHT_CA_SHIFTS),
+        (bond_pen,       WEIGHT_BOND),
+        (angle_pen,      WEIGHT_ANGLE),
+        (rdc_term1,      weight_rdc1),
+        (rdc_term2,      weight_rdc2),
+        (chirality_pen,  WEIGHT_CHIRALITY),
     ])
 
     refiner = IntegrativeRefiner(loss_fn=joint_loss)
 
     # ------------------------------------------------------------------
-    # 7. Baseline
+    # 8. Baseline
     # ------------------------------------------------------------------
     init_cj = jnp.array(coords)
     init_ca_rmsd = float(ca_loss(init_cj, init_cj))
@@ -264,19 +275,21 @@ def main() -> None:
     rdc_term2.maybe_update_tensor(init_cj, epoch=0)
     init_q1 = float(q_rdc1(init_cj))
     init_q2 = float(q_rdc2(init_cj))
+    init_chiral_viol = chirality_pen.count_violations(init_cj)
 
     print("\n--- Baseline (NMR model 1, pre-refinement) ---")
-    print(f"  Cα RMSD:        {init_ca_rmsd:.3f} ppm")
+    print(f"  Cα RMSD:             {init_ca_rmsd:.3f} ppm")
     print(f"  Q (RDC list 1, PEG): {init_q1:.3f}  (14.4× overdetermined)")
     print(f"  Q (RDC list 2, Pf1): {init_q2:.3f}  (15.0× overdetermined)")
+    print(f"  Chirality violations: {init_chiral_viol} Cα inversions in raw PDB")
 
     # ------------------------------------------------------------------
-    # 8. Per-epoch callback
+    # 9. Per-epoch callback
     #
     # Registered via ``per_epoch_callbacks`` in refiner.run().  Called once
     # per epoch with (epoch, params, coords).  Handles:
     #   (a) Re-fitting both Saupe tensors at TENSOR_UPDATE_INTERVAL boundaries.
-    #   (b) Printing Cα RMSD and Q-factors at LOG_INTERVAL boundaries.
+    #   (b) Printing Cα RMSD, Q-factors, and chirality violations at LOG_INTERVAL.
     # ------------------------------------------------------------------
     print(f"\nRefining for {EPOCHS} epochs  "
           f"(lr={LEARNING_RATE}, anchor τ={WEIGHT_ANCHOR_DECAY}, "
@@ -296,9 +309,10 @@ def main() -> None:
             q2   = float(q_rdc2(coords_arg))
             q1v  = rdc_term1.evaluate_validation_q(coords_arg)
             q2v  = rdc_term2.evaluate_validation_q(coords_arg)
+            chv  = chirality_pen.count_violations(coords_arg)
             q1vs = f"{q1v:.3f}" if q1v is not None else "  —  "
             q2vs = f"{q2v:.3f}" if q2v is not None else "  —  "
-            print(f"  {epoch + 1:5d} | {ca:.3f}    | {q1:.3f}  {q1vs} | {q2:.3f}  {q2vs}")
+            print(f"  {epoch + 1:5d} | {ca:.3f}    | {q1:.3f}  {q1vs} | {q2:.3f}  {q2vs} | chir={chv}")
 
     # ------------------------------------------------------------------
     # 9. Refinement — single refiner.run() call
@@ -329,6 +343,7 @@ def main() -> None:
     final_q2_val  = rdc_term2.evaluate_validation_q(best_cj)
     final_bond    = bond_pen.bond_rmsd(best_cj)
     final_angle   = angle_pen.angle_rmsd_deg(best_cj)
+    final_chiral  = chirality_pen.count_violations(best_cj)
     struct_rmsd   = kabsch_rmsd(coords, np.array(result.best_params))
 
     print("\n--- Final Results (best checkpoint) ---")
@@ -342,6 +357,8 @@ def main() -> None:
           + (f"  val={final_q2_val:.3f}" if final_q2_val is not None else ""))
     print(f"  Bond RMSD:           {final_bond:.4f} Å  (target < 0.05 Å)")
     print(f"  Angle RMSD:          {final_angle:.3f}°  (target < 3°)")
+    print(f"  Chirality violations:{final_chiral:2d}  (Cα D-inversions; "
+          f"was {init_chiral_viol} pre-refinement)")
     print(f"  Structural RMSD:     {struct_rmsd:.3f} Å vs raw PDB model 1")
     print(f"\n  Epochs run:          {result.epochs_run} / {EPOCHS}")
     print(f"  Stopped early:       {result.stopped_early}")
@@ -366,6 +383,8 @@ def main() -> None:
     np.save(results_dir / "rdc1_q_after.npy",  np.array(final_q1))
     np.save(results_dir / "rdc2_q_before.npy", np.array(init_q2))
     np.save(results_dir / "rdc2_q_after.npy",  np.array(final_q2))
+    np.save(results_dir / "chirality_violations_before.npy", np.array(init_chiral_viol))
+    np.save(results_dir / "chirality_violations_after.npy",  np.array(final_chiral))
 
     import biotite.structure.io.pdb as pdb  # noqa: PLC0415
 
