@@ -51,12 +51,11 @@ from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
-
 from diff_biophys.geometry.backbone import (
-    CA_C_LENGTH,
-    CA_C_N_ANGLE,
     C_N_CA_ANGLE,
     C_N_LENGTH,
+    CA_C_LENGTH,
+    CA_C_N_ANGLE,
     N_CA_C_ANGLE,
     N_CA_LENGTH,
 )
