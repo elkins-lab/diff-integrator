@@ -145,14 +145,53 @@ under-determined RDC constraints.
 The **GmR58A full-RDC benchmark** demonstrates the reliable regime: all three
 media have ratios of 8.6×, 11.8×, and 10.6×.
 
-### Proposed future solutions (not yet implemented)
+### Proposed solutions
 
-1. **RDC cross-validation** — Hold back a fraction of measurements as a
-   validation set; monitor validation Q independently from training Q.
-2. **Regularised tensor fitting** — Tikhonov penalty on tensor magnitude during
-   `fit_saupe_tensor` (requires change in `diff_biophys`).
-3. **Auto-weight by ratio** — Scale RDC term weight proportionally to the
-   overdetermination ratio, automatically down-weighting marginal media.
+**1. RDC cross-validation (implemented ✅)**
+
+Hold back a fraction of measurements as a validation set; monitor validation Q
+independently from training Q.
+
+```python
+from diff_integrator.terms.nmr import make_rdc_cv_refinement_fns, FixedTensorRDCLoss
+
+loss_fn, q_eval_fn, make_tensor_fn, val_q_fn, n_train, n_val = \
+    make_rdc_cv_refinement_fns(
+        rdc["res_id"], rdc["rdc"], res_ids, cv_fraction=0.2
+    )
+
+term = FixedTensorRDCLoss(
+    loss_fn=loss_fn, make_tensor_fn=make_tensor_fn,
+    n_rdcs=n_train, val_q_eval_fn=val_q_fn,
+)
+```
+
+`evaluate_validation_q(coords)` returns the Q-factor on held-out measurements
+using the current training-fitted tensor.  If training Q drops while validation
+Q stays flat or rises, overfitting is occurring.
+
+**2KZV experiment (2025-06)**: With PAG cross-validation (18 train / 5 held-out
+RDCs) the training Q improved from 0.309 → 0.298 (−4%) while the validation Q
+*worsened* from 0.309 → 0.471 (+52%).  This definitively shows that at ratio
+3.6×, the PAG medium is too underdetermined for reliable structural improvement.
+Without the CV split this overfitting would have been invisible.
+
+**2. Auto-weight by overdetermination ratio (implemented ✅)**
+
+Scale RDC term weight proportionally to `n_train_rdcs / (5 × 10)`, automatically
+down-weighting marginal media and up-weighting well-determined ones.
+
+```python
+weight = rdc_term.suggested_weight(base_weight=1.0)
+# e.g. PAG (ratio 3.6×): weight = 0.36
+#      PEG (ratio 3.2×): weight = 0.32
+#      GmR58A L1 (ratio 8.6×): weight = 0.86
+```
+
+Result is clamped to `[0.1 × base, 2.0 × base]`.
+
+**3. Regularised tensor fitting** — Tikhonov penalty on tensor magnitude
+during `fit_saupe_tensor` (requires change in `diff_biophys`, not yet implemented).
 
 ---
 
@@ -205,13 +244,14 @@ optimizer from exploring physically inaccessible φ values.
 
 | Direction | Benefit | Complexity |
 |---|---|---|
-| Add GmR58A RDCs (3 media, 155 total) | Dramatic Q improvement; benchmarks reliable regime | Low (data available, tooling ready) ✅ **Implemented** |
+| Add GmR58A RDCs (3 media, 155 total) | Dramatic Q improvement; benchmarks reliable regime | Low ✅ **Implemented** |
 | Annealed geometry weight (τ=100) | Schedule completes within 500-epoch budget; Q(gel) −82%, Q(PEG) −84% | Low ✅ **Implemented** |
 | Sequence-aware Ramachandran prior | Physically accurate backbone prior (GLY ε-basin, PRO ring constraint) | Low ✅ **Implemented** |
 | Best-checkpoint saving | Returns the iterate with best loss/Q rather than the last one | Low ✅ **Implemented** |
+| RDC cross-validation split | Revealed PAG overfitting in 2KZV at ratio 3.6× | Low ✅ **Implemented** |
+| Auto-weight RDC by ratio | PAG=0.36, PEG=0.32 for 2KZV; reduces incentive to overfit underdetermined media | Low ✅ **Implemented** |
 | Anchored-segment NeRF for long chains | Eliminates HR2876B drift problem | Medium |
 | Cartesian + bond-angle penalty | Eliminates NeRF drift entirely | Medium |
-| RDC cross-validation split | Guard against overfitting in low-ratio media | Low |
-| Auto-weight RDC by ratio | Prevent accidental use of under-determined media | Low |
+| Regularised tensor fitting | Tikhonov penalty in fit_saupe_tensor (diff_biophys change required) | Medium |
 | Riemannian Adam for torsion angles | Respects periodic (−π, π) topology | Medium |
 | Per-term early stopping | Stop on experimental observable plateau, not total loss | Low |

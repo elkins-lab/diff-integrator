@@ -53,6 +53,20 @@ Design choices
    NMR medoid value (0.36) should be interpreted as overfitting, not as a
    genuine structural improvement.  PAG (23 RDCs, ratio 4.6×) is the primary
    validation metric.
+
+5. **RDC cross-validation** (PAG only):
+   20% of PAG measurements (≈4 RDCs) are held out as a validation set.  The
+   training loss uses only the remaining 19 RDCs; ``evaluate_validation_q()``
+   evaluates the held-out set with the *training-fitted* tensor.  If training
+   Q drops while validation Q stays flat, overfitting is occurring.  PEG is
+   not split (only 16 RDCs; any split would leave < 6 for training).
+
+6. **Auto-weight by overdetermination ratio**:
+   ``FixedTensorRDCLoss.suggested_weight()`` scales the RDC term weight
+   proportionally to ``n_train_rdcs / (5 × 10)`` — a medium at the ideal
+   ratio of 10× gets ``base_weight`` unchanged.  PAG (≈19 train, ratio 3.8×)
+   gets weight ≈ 0.38; PEG (16 total, ratio 3.2×) gets weight ≈ 0.32.  Both
+   are automatically down-weighted relative to the geometry anchor.
 """
 
 import sys
@@ -72,7 +86,7 @@ from diff_biophys.nmr.rdc import make_rdc_refinement_fns
 from diff_integrator.loss import JointLoss
 from diff_integrator.terms.chemical_shifts import CAShiftLoss
 from diff_integrator.terms.geometry import GeometryLoss
-from diff_integrator.terms.nmr import FixedTensorRDCLoss
+from diff_integrator.terms.nmr import FixedTensorRDCLoss, make_rdc_cv_refinement_fns
 
 # ---------------------------------------------------------------------------
 # Data location — diff-biophys benchmark directory
@@ -90,12 +104,15 @@ EPOCHS = 500
 LEARNING_RATE = 0.01
 TENSOR_UPDATE_INTERVAL = 50  # Re-fit Saupe tensor every N epochs
 
-# Loss weights — geometry anchor is strong to prevent unravelling under the
-# degenerate RDC potential; RDC and shift terms are equally weighted.
-WEIGHT_GEOMETRY = 5.0
+# Loss weights
+WEIGHT_GEOMETRY = 5.0    # Strong anchor against degenerate RDC potential
 WEIGHT_CA_SHIFTS = 1.0
-WEIGHT_RDC_PAG = 1.0
-WEIGHT_RDC_PEG = 1.0
+# RDC weights are set automatically via suggested_weight() below;
+# BASE_WEIGHT_RDC is the reference for a medium at the ideal ratio (10×).
+BASE_WEIGHT_RDC = 1.0
+
+# Cross-validation fraction for PAG (PEG is too small to split).
+CV_FRACTION_PAG = 0.2
 
 
 def kabsch_rmsd(A: np.ndarray, B: np.ndarray) -> float:
@@ -153,27 +170,52 @@ def main() -> None:
     print(f"Cα shifts: {len(ca_exp['res_id'])} matched residues")
 
     # ------------------------------------------------------------------
-    # 3. Set up RDC losses (fixed-tensor approach)
+    # 3. Set up RDC losses (fixed-tensor approach with CV split for PAG)
     # ------------------------------------------------------------------
     rdc_pag = load_rdc_table(BENCH_DIR / "rdc_PAG.tsv")["PAG"]
     rdc_peg = load_rdc_table(BENCH_DIR / "rdc_PEG.tsv")["PEG"]
 
-    # make_rdc_refinement_fns returns:
-    #   loss_fn(coords, fixed_tensor) -> scalar MSE  [use inside gradient]
-    #   q_eval_fn(coords) -> scalar Q-factor          [monitoring only]
-    #   make_tensor_fn(coords) -> (3,3) Saupe tensor  [periodic update]
-    loss_pag, q_pag, tensor_pag, n_pag = make_rdc_refinement_fns(
-        rdc_pag["res_id"], rdc_pag["rdc"], res_ids
+    # PAG: use cross-validation split (20% held out for monitoring).
+    # make_rdc_cv_refinement_fns returns:
+    #   loss_fn      — MSE on training RDCs only (used in gradient)
+    #   q_eval_fn    — Q-factor on ALL matched RDCs (monitoring; refits tensor)
+    #   make_tensor_fn — fits tensor from training RDCs (for periodic updates)
+    #   val_q_fn     — Q on held-out RDCs using training-fitted tensor
+    #   n_train, n_val — split counts
+    loss_pag, q_pag, tensor_pag, val_q_pag, n_pag_train, n_pag_val = (
+        make_rdc_cv_refinement_fns(
+            rdc_pag["res_id"], rdc_pag["rdc"], res_ids,
+            cv_fraction=CV_FRACTION_PAG,
+        )
     )
+
+    # PEG: too few RDCs to split; use all for training, no CV.
     loss_peg, q_peg, tensor_peg, n_peg = make_rdc_refinement_fns(
         rdc_peg["res_id"], rdc_peg["rdc"], res_ids
     )
-    print(f"RDC PAG: {n_pag} matched residues (primary benchmark)")
-    print(f"RDC PEG: {n_peg} matched residues (supplementary — underdetermined)")
 
-    # Wrap in FixedTensorRDCLoss; tensor will be updated every TENSOR_UPDATE_INTERVAL
-    rdc_term_pag = FixedTensorRDCLoss(loss_pag, tensor_pag, update_interval=TENSOR_UPDATE_INTERVAL)
-    rdc_term_peg = FixedTensorRDCLoss(loss_peg, tensor_peg, update_interval=TENSOR_UPDATE_INTERVAL)
+    print(f"RDC PAG: {n_pag_train} train + {n_pag_val} val residues  "
+          f"(CV fraction {CV_FRACTION_PAG:.0%})")
+    print(f"RDC PEG: {n_peg} matched residues (no CV — underdetermined)")
+
+    # Wrap in FixedTensorRDCLoss.
+    rdc_term_pag = FixedTensorRDCLoss(
+        loss_pag, tensor_pag,
+        update_interval=TENSOR_UPDATE_INTERVAL,
+        n_rdcs=n_pag_train,
+        val_q_eval_fn=val_q_pag,
+    )
+    rdc_term_peg = FixedTensorRDCLoss(
+        loss_peg, tensor_peg,
+        update_interval=TENSOR_UPDATE_INTERVAL,
+        n_rdcs=n_peg,
+    )
+
+    # Auto-weight: scale each term by its overdetermination ratio.
+    weight_pag = rdc_term_pag.suggested_weight(BASE_WEIGHT_RDC)
+    weight_peg = rdc_term_peg.suggested_weight(BASE_WEIGHT_RDC)
+    print(f"  Auto-weights: PAG={weight_pag:.3f}  PEG={weight_peg:.3f}  "
+          f"(base={BASE_WEIGHT_RDC}, ideal ratio=10×)")
 
     # ------------------------------------------------------------------
     # 4. Set up geometry anchor
@@ -187,10 +229,10 @@ def main() -> None:
     # ------------------------------------------------------------------
     joint_loss = JointLoss(
         [
-            (geom_loss, WEIGHT_GEOMETRY),  # Strong anchor vs. RDC degeneracy
+            (geom_loss, WEIGHT_GEOMETRY),    # Strong anchor vs. RDC degeneracy
             (ca_loss, WEIGHT_CA_SHIFTS),
-            (rdc_term_pag, WEIGHT_RDC_PAG),
-            (rdc_term_peg, WEIGHT_RDC_PEG),
+            (rdc_term_pag, weight_pag),       # Auto-weighted by ratio
+            (rdc_term_peg, weight_peg),       # Auto-weighted by ratio
         ]
     )
 
@@ -241,10 +283,14 @@ def main() -> None:
         loss_history.append(float(loss_val))
 
         if (epoch + 1) % 100 == 0:
-            q_p = float(q_pag(build_backbone(params[0], params[1])))
-            q_e = float(q_peg(build_backbone(params[0], params[1])))
+            curr_c = build_backbone(params[0], params[1])
+            q_p_train = float(q_pag(curr_c))
+            q_p_val = rdc_term_pag.evaluate_validation_q(curr_c)
+            q_e = float(q_peg(curr_c))
+            val_str = f"  Q(PAG val)={q_p_val:.3f}" if q_p_val is not None else ""
             print(
-                f"  Epoch {epoch + 1:4d}: loss={loss_val:.4f}  Q(PAG)={q_p:.3f}  Q(PEG)={q_e:.3f}"
+                f"  Epoch {epoch + 1:4d}: loss={loss_val:.4f}  "
+                f"Q(PAG train)={q_p_train:.3f}{val_str}  Q(PEG)={q_e:.3f}"
             )
 
     # ------------------------------------------------------------------
@@ -255,15 +301,24 @@ def main() -> None:
 
     rmsd = kabsch_rmsd(init_coords, final_coords)
 
+    q_pag_final = float(q_pag(final_coords))
+    q_pag_val_final = rdc_term_pag.evaluate_validation_q(final_coords)
+    q_peg_final = float(q_peg(final_coords))
+
     print("\n--- Final Results ---")
     print(f"  Cα RMSD:             {float(ca_loss((final_phi, final_psi), final_coords)):.3f} ppm")
-    print(f"  Q (PAG):             {float(q_pag(final_coords)):.3f}  (published target: ≤0.22)")
-    print(f"  Q (PEG):             {float(q_peg(final_coords)):.3f}  (caution: underdetermined)")
+    print(f"  Q (PAG train):       {q_pag_final:.3f}  (published target: ≤0.22)")
+    if q_pag_val_final is not None:
+        print(f"  Q (PAG val):         {q_pag_val_final:.3f}  (held-out {n_pag_val} RDCs — overfitting check)")
+    print(f"  Q (PEG):             {q_peg_final:.3f}  (caution: underdetermined)")
     print(f"  Structural RMSD:     {rmsd:.3f} Å to NMR model 1")
 
-    if float(q_peg(final_coords)) < 0.18:
+    if q_peg_final < 0.18:
         print("\n  ⚠️  WARNING: Q(PEG) is suspiciously low — likely overfitting the 16-RDC dataset.")
         print("     PAG Q-factor is the reliable primary metric.")
+    if q_pag_val_final is not None and q_pag_val_final > q_pag_final + 0.05:
+        print("\n  ⚠️  WARNING: PAG validation Q is notably higher than training Q.")
+        print("     The improvement may not generalise to held-out measurements.")
 
     # ------------------------------------------------------------------
     # 9. Save artefacts
