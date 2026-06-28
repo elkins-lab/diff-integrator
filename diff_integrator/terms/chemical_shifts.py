@@ -14,6 +14,8 @@ class CAShiftLoss(LossTerm):
     Assumes `params` is a tuple of (phi, psi) dihedral angles.
     """
 
+    name: str = "ca_shift"
+
     def __init__(
         self,
         exp_res_ids: np.ndarray,

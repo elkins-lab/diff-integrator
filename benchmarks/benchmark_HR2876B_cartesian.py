@@ -69,7 +69,7 @@ from diff_biophys.geometry.backbone import (
 )
 
 from diff_integrator.loss import JointLoss
-from diff_integrator.optimizer import IntegrativeRefiner
+from diff_integrator.optimizer import EarlyStopping, IntegrativeRefiner
 from diff_integrator.schedules import ExponentialDecaySchedule
 from diff_integrator.terms.bond_geometry import make_backbone_bond_geometry
 from diff_integrator.terms.chemical_shifts import CartesianCAShiftLoss
@@ -87,7 +87,7 @@ from parse_nmrstar import load_bmrb_shifts  # noqa: E402 (local benchmark utilit
 # Hyperparameters
 # ---------------------------------------------------------------------------
 
-EPOCHS = 500
+EPOCHS = 2000         # large budget; per-term early stopping exits when Cα RMSD plateaus
 LEARNING_RATE = 0.005   # Lower LR than NeRF: Cartesian space has larger gradient norms
 
 # Position anchor: strong early (prevents rigid-body drift), relaxed late
@@ -207,6 +207,11 @@ def main() -> None:
         kinematics_fn=None,           # identity: params ARE the coords
         weight_schedules={0: anchor_schedule},
         log_interval=50,
+        early_stopping=EarlyStopping(
+            term_index=1,             # watch CartesianCAShiftLoss (unweighted ppm)
+            patience=75,              # stop if no improvement for 75 epochs
+            min_delta=5e-5,           # ~0.05 mppm threshold
+        ),
     )
 
     # ------------------------------------------------------------------
@@ -242,6 +247,12 @@ def main() -> None:
     _report("Best checkpoint (lowest training loss):", best_c)
     if result.best_epoch != result.epochs_run - 1:
         _report("Final epoch:", final_c_raw)
+    print(f"\n  Epochs run:        {result.epochs_run} / {EPOCHS}")
+    print(f"  Stopped early:     {result.stopped_early}")
+    if result.stopped_early:
+        print(f"  Stopped at epoch:  {result.stopped_at_epoch}")
+        print(f"  Triggered by:      {result.early_stopping_triggered_by}")
+    print(f"  Best checkpoint:   epoch {result.best_epoch}")
 
     # ------------------------------------------------------------------
     # 9. Save artefacts

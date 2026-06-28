@@ -257,3 +257,145 @@ def test_no_weight_history_without_schedules():
 
     result = refiner.run(init_params=init_coords, epochs=5)
     assert result.weight_history == {}
+
+
+# ---------------------------------------------------------------------------
+# EarlyStopping dataclass validation
+# ---------------------------------------------------------------------------
+
+import pytest  # noqa: E402
+from diff_integrator.optimizer import EarlyStopping  # noqa: E402
+
+
+def test_early_stopping_invalid_patience():
+    with pytest.raises(ValueError, match="patience must be > 0"):
+        EarlyStopping(term_index=0, patience=0)
+
+
+def test_early_stopping_invalid_min_delta():
+    with pytest.raises(ValueError, match="min_delta must be >= 0"):
+        EarlyStopping(term_index=0, patience=5, min_delta=-1.0)
+
+
+def test_early_stopping_invalid_mode():
+    with pytest.raises(ValueError, match="mode must be"):
+        EarlyStopping(term_index=0, patience=5, mode="median")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+class FlatLoss(LossTerm):
+    name: str = "flat"
+
+    def __call__(self, params, coords):
+        import jax.numpy as jnp
+        return jnp.array(1.0)
+
+
+# ---------------------------------------------------------------------------
+# Per-term early stopping integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_per_term_early_stopping_fires():
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0), (FlatLoss(), 0.5)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init, epochs=500, learning_rate=0.1,
+        early_stopping=EarlyStopping(term_index=1, patience=10, min_delta=1e-6),
+    )
+    assert result.stopped_early is True
+    assert result.epochs_run <= 15
+    assert result.stopped_at_epoch >= 0
+    assert "term_1" in result.early_stopping_triggered_by
+    assert "flat" in result.early_stopping_triggered_by
+    assert "patience=10" in result.early_stopping_triggered_by
+
+
+def test_per_term_early_stopping_does_not_fire_if_improving():
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init, epochs=50, learning_rate=0.1,
+        early_stopping=EarlyStopping(term_index=0, patience=40, min_delta=1e-8),
+    )
+    assert result.stopped_early is False
+    assert result.epochs_run == 50
+    assert result.stopped_at_epoch == -1
+    assert result.early_stopping_triggered_by == ""
+
+
+def test_per_term_early_stopping_multiple_terms():
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    flat_fast = FlatLoss(); flat_fast.name = "flat_fast"
+    flat_slow = FlatLoss(); flat_slow.name = "flat_slow"
+    loss_fn = JointLoss([
+        (DummyTargetLoss(target), 1.0), (flat_fast, 0.5), (flat_slow, 0.5),
+    ])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init, epochs=500, learning_rate=0.1,
+        early_stopping=[
+            EarlyStopping(term_index=1, patience=5,  min_delta=1e-6),
+            EarlyStopping(term_index=2, patience=20, min_delta=1e-6),
+        ],
+    )
+    assert result.stopped_early is True
+    assert "term_1" in result.early_stopping_triggered_by
+    assert result.epochs_run <= 10
+
+
+def test_per_term_early_stopping_result_fields():
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    flat = FlatLoss(); flat.name = "observable"
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0), (flat, 1.0)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init, epochs=500,
+        early_stopping=EarlyStopping(term_index=1, patience=7, min_delta=1e-9),
+    )
+    assert result.stopped_at_epoch >= 0
+    assert result.stopped_at_epoch == result.epochs_run - 1
+    assert "term_1" in result.early_stopping_triggered_by
+    assert "observable" in result.early_stopping_triggered_by
+    assert "patience=7" in result.early_stopping_triggered_by
+
+
+def test_per_term_early_stopping_single_instance():
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0), (FlatLoss(), 0.5)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init, epochs=500, learning_rate=0.1,
+        early_stopping=EarlyStopping(term_index=1, patience=5, min_delta=1e-9),
+    )
+    assert result.stopped_early is True
+    assert result.epochs_run < 500
+
+
+def test_global_and_per_term_stopping_coexist():
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0), (FlatLoss(), 0.5)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init, epochs=2000, learning_rate=0.1,
+        patience=1000, min_delta=1e-10,
+        early_stopping=EarlyStopping(term_index=1, patience=5, min_delta=1e-9),
+    )
+    assert result.stopped_early is True
+    assert result.epochs_run <= 10
+    assert "term_1" in result.early_stopping_triggered_by
+
+
+def test_per_term_early_stopping_no_fire_when_none():
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(init_params=init, epochs=10)
+    assert result.stopped_at_epoch == -1
+    assert result.early_stopping_triggered_by == ""
