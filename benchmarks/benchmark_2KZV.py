@@ -37,7 +37,8 @@ Design choices
 2. **Fixed-tensor RDC loss** (``FixedTensorRDCLoss``):
    The Saupe alignment tensor is fitted from the current backbone, then held
    fixed during gradient descent using ``jax.lax.stop_gradient``.  The tensor
-   is re-fitted every ``TENSOR_UPDATE_INTERVAL`` epochs.
+   is re-fitted every ``TENSOR_UPDATE_INTERVAL`` epochs via a
+   ``per_epoch_callbacks`` entry in ``refiner.run()``.
    This is the standard X-PLOR/CNS/PALES approach and prevents the optimizer
    from trivially driving Q→0 by exploiting tensor degeneracy.
 
@@ -67,12 +68,19 @@ Design choices
    ratio of 10× gets ``base_weight`` unchanged.  PAG (≈19 train, ratio 3.8×)
    gets weight ≈ 0.38; PEG (16 total, ratio 3.2×) gets weight ≈ 0.32.  Both
    are automatically down-weighted relative to the geometry anchor.
+
+7. **Training loop**: A single ``IntegrativeRefiner.run()`` call with
+   ``per_epoch_callbacks`` for periodic tensor updates and Q-factor logging.
+   No external loop or manual optax bookkeeping is needed.
 """
 
 import sys
 from pathlib import Path
+from typing import Any
 
+import jax.numpy as jnp
 import numpy as np
+import optax
 from diff_biophys.geometry.backbone import (
     compute_phi_psi,
     get_backbone_coords,
@@ -84,6 +92,7 @@ from diff_biophys.nmr.io import load_rdc_table
 from diff_biophys.nmr.rdc import make_rdc_refinement_fns
 
 from diff_integrator.loss import JointLoss
+from diff_integrator.optimizer import IntegrativeRefiner
 from diff_integrator.terms.chemical_shifts import CAShiftLoss
 from diff_integrator.terms.geometry import GeometryLoss
 from diff_integrator.terms.nmr import FixedTensorRDCLoss, make_rdc_cv_refinement_fns
@@ -103,6 +112,7 @@ from parse_bmrb import load_bmrb_shifts  # noqa: E402 (local benchmark utility)
 EPOCHS = 500
 LEARNING_RATE = 0.01
 TENSOR_UPDATE_INTERVAL = 50  # Re-fit Saupe tensor every N epochs
+LOG_INTERVAL = 100           # Print Q diagnostics every N epochs
 
 # Loss weights
 WEIGHT_GEOMETRY = 5.0    # Strong anchor against degenerate RDC potential
@@ -236,6 +246,10 @@ def main() -> None:
         ]
     )
 
+    # Use plain Adam (no gradient clipping) to match the original design.
+    adam = optax.adam(LEARNING_RATE)
+    refiner = IntegrativeRefiner(loss_fn=joint_loss)
+
     # ------------------------------------------------------------------
     # 6. Evaluate baseline (before refinement)
     # ------------------------------------------------------------------
@@ -249,84 +263,75 @@ def main() -> None:
     print(f"  Q (PEG):  {float(q_peg(init_coords)):.3f}  (published NMR medoid: 0.36)")
 
     # ------------------------------------------------------------------
-    # 7. Custom training loop with periodic tensor updates
+    # 7. Per-epoch callback: tensor updates + Q logging
     # ------------------------------------------------------------------
-    print(f"\nRefining for {EPOCHS} epochs (tensor update every {TENSOR_UPDATE_INTERVAL} steps)...")
+    print(f"\nRefining for {EPOCHS} epochs "
+          f"(tensor update every {TENSOR_UPDATE_INTERVAL} steps)...")
 
-    import optax  # noqa: PLC0415
+    def epoch_callback(epoch: int, params: Any, coords_arg: jnp.ndarray) -> None:
+        # Re-fit Saupe tensors outside the gradient tape
+        rdc_term_pag.maybe_update_tensor(coords_arg, epoch)
+        rdc_term_peg.maybe_update_tensor(coords_arg, epoch)
 
-    optimizer = optax.adam(LEARNING_RATE)
-    opt_state = optimizer.init((init_phi, init_psi))
-    params = (init_phi, init_psi)
-    loss_history = []
-
-    import jax  # noqa: PLC0415
-
-    @jax.jit
-    def step(p, state):  # type: ignore[no-untyped-def]
-        def objective(pp):  # type: ignore[no-untyped-def]
-            c = build_backbone(pp[0], pp[1])
-            return joint_loss(pp, c)
-
-        loss_val, grads = jax.value_and_grad(objective)(p)
-        updates, new_state = optimizer.update(grads, state)
-        new_p = optax.apply_updates(p, updates)
-        return new_p, new_state, loss_val
-
-    for epoch in range(EPOCHS):
-        # Update tensors outside the gradient (every TENSOR_UPDATE_INTERVAL steps)
-        curr_coords = build_backbone(params[0], params[1])
-        rdc_term_pag.maybe_update_tensor(curr_coords, epoch)
-        rdc_term_peg.maybe_update_tensor(curr_coords, epoch)
-
-        params, opt_state, loss_val = step(params, opt_state)
-        loss_history.append(float(loss_val))
-
-        if (epoch + 1) % 100 == 0:
-            curr_c = build_backbone(params[0], params[1])
-            q_p_train = float(q_pag(curr_c))
-            q_p_val = rdc_term_pag.evaluate_validation_q(curr_c)
-            q_e = float(q_peg(curr_c))
-            val_str = f"  Q(PAG val)={q_p_val:.3f}" if q_p_val is not None else ""
+        # Q-factor logging
+        if (epoch + 1) % LOG_INTERVAL == 0:
+            q_p_train = float(q_pag(coords_arg))
+            q_p_val   = rdc_term_pag.evaluate_validation_q(coords_arg)
+            q_e       = float(q_peg(coords_arg))
+            val_str   = f"  Q(PAG val)={q_p_val:.3f}" if q_p_val is not None else ""
             print(
-                f"  Epoch {epoch + 1:4d}: loss={loss_val:.4f}  "
+                f"  Epoch {epoch + 1:4d}: "
                 f"Q(PAG train)={q_p_train:.3f}{val_str}  Q(PEG)={q_e:.3f}"
             )
 
     # ------------------------------------------------------------------
-    # 8. Evaluate final results
+    # 8. Refinement — single refiner.run() call
     # ------------------------------------------------------------------
-    final_phi, final_psi = params
+    result = refiner.run(
+        init_params=(init_phi, init_psi),
+        epochs=EPOCHS,
+        optimizer=adam,                                       # plain Adam, no clip
+        kinematics_fn=lambda p: build_backbone(p[0], p[1]),
+        per_epoch_callbacks=[epoch_callback],
+    )
+
+    # ------------------------------------------------------------------
+    # 9. Evaluate final results
+    # ------------------------------------------------------------------
+    final_phi, final_psi = result.final_params
     final_coords = build_backbone(final_phi, final_psi)
 
     rmsd = kabsch_rmsd(init_coords, final_coords)
 
-    q_pag_final = float(q_pag(final_coords))
+    q_pag_final     = float(q_pag(final_coords))
     q_pag_val_final = rdc_term_pag.evaluate_validation_q(final_coords)
-    q_peg_final = float(q_peg(final_coords))
+    q_peg_final     = float(q_peg(final_coords))
 
     print("\n--- Final Results ---")
-    print(f"  Cα RMSD:             {float(ca_loss((final_phi, final_psi), final_coords)):.3f} ppm")
+    print(f"  Cα RMSD:             "
+          f"{float(ca_loss((final_phi, final_psi), final_coords)):.3f} ppm")
     print(f"  Q (PAG train):       {q_pag_final:.3f}  (published target: ≤0.22)")
     if q_pag_val_final is not None:
-        print(f"  Q (PAG val):         {q_pag_val_final:.3f}  (held-out {n_pag_val} RDCs — overfitting check)")
+        print(f"  Q (PAG val):         {q_pag_val_final:.3f}  "
+              f"(held-out {n_pag_val} RDCs — overfitting check)")
     print(f"  Q (PEG):             {q_peg_final:.3f}  (caution: underdetermined)")
     print(f"  Structural RMSD:     {rmsd:.3f} Å to NMR model 1")
 
     if q_peg_final < 0.18:
-        print("\n  ⚠️  WARNING: Q(PEG) is suspiciously low — likely overfitting the 16-RDC dataset.")
+        print("\n  ⚠️  WARNING: Q(PEG) is suspiciously low — likely overfitting the "
+              "16-RDC dataset.")
         print("     PAG Q-factor is the reliable primary metric.")
     if q_pag_val_final is not None and q_pag_val_final > q_pag_final + 0.05:
         print("\n  ⚠️  WARNING: PAG validation Q is notably higher than training Q.")
         print("     The improvement may not generalise to held-out measurements.")
 
     # ------------------------------------------------------------------
-    # 9. Save artefacts
+    # 10. Save artefacts
     # ------------------------------------------------------------------
     results_dir = Path("benchmarks/results/2KZV")
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    np.save(results_dir / "loss_history.npy", np.array(loss_history))
+    np.save(results_dir / "loss_history.npy", np.array(result.loss_history))
 
     import biotite.structure.io.pdb as pdb  # noqa: PLC0415
 

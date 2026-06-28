@@ -22,7 +22,8 @@ the dataset essentially immune to the tensor-degeneracy overfitting problem.
 Annealed geometry weight
 ------------------------
 The geometry restraint starts strong (weight=10.0) and decays exponentially
-toward 0.1 over 300 epochs via ``ExponentialDecaySchedule``.  This prevents
+toward 0.1 over 300 epochs via ``ExponentialDecaySchedule``, passed to
+``refiner.run()`` as ``weight_schedules={0: geom_schedule}``.  This prevents
 structural unravelling in the early epochs when the RDC tensors are poorly
 estimated, then relaxes the anchor so experimental gradients can dominate
 as the tensors stabilise.
@@ -34,16 +35,30 @@ Design choices
 
 2. **Fixed-tensor RDC losses** (``FixedTensorRDCLoss``):
    The Saupe alignment tensor for each medium is held fixed during gradient
-   descent and re-fitted every ``TENSOR_UPDATE_INTERVAL`` epochs.
+   descent and re-fitted every ``TENSOR_UPDATE_INTERVAL`` epochs via a
+   ``per_epoch_callbacks`` entry in ``refiner.run()``.
 
 3. **Annealed GeometryLoss anchor**:
-   Uses ``ExponentialDecaySchedule`` via the ``weight_schedules`` mechanism
-   in ``IntegrativeRefiner``.
+   Uses ``ExponentialDecaySchedule`` via ``weight_schedules={0: geom_schedule}``
+   in ``refiner.run()``.  No manual weight-passing trick to the JIT step
+   function is needed — ``IntegrativeRefiner`` handles this internally by
+   passing the current weight vector as a dynamic JAX array to the compiled
+   objective, so weight changes take effect every epoch without recompilation.
+
+4. **Best-checkpoint by mean Q-factor**:
+   ``RefinementResult.best_params`` tracks the lowest total training loss.
+   GmR58A uses mean Q-factor across all three media as the primary checkpoint
+   criterion (lower mean Q = structurally better for this multi-media dataset).
+   A ``per_epoch_callbacks`` entry accumulates the best-Q checkpoint every
+   10 epochs, which is stored in ``best_q_params`` and reported separately
+   alongside ``result.best_params`` (lowest loss).
 """
 
 import sys
 from pathlib import Path
+from typing import Any
 
+import jax.numpy as jnp
 import numpy as np
 from diff_biophys.geometry.backbone import (
     compute_phi_psi,
@@ -60,7 +75,6 @@ from diff_integrator.schedules import ExponentialDecaySchedule
 from diff_integrator.terms.chemical_shifts import CAShiftLoss
 from diff_integrator.terms.geometry import GeometryLoss
 from diff_integrator.terms.nmr import FixedTensorRDCLoss
-from diff_integrator.terms.ramachandran import RamachandranLoss
 
 # ---------------------------------------------------------------------------
 # Data location
@@ -77,16 +91,18 @@ from parse_nmrstar import load_bmrb_rdcs, load_bmrb_shifts  # noqa: E402
 EPOCHS = 500
 LEARNING_RATE = 0.01
 TENSOR_UPDATE_INTERVAL = 50  # Re-fit Saupe tensor every N epochs
+LOG_INTERVAL = 100           # Print diagnostics every N epochs
+BEST_Q_CHECK_INTERVAL = 10   # Check best mean-Q every N epochs
 
 # Loss weights
 WEIGHT_GEOMETRY_INITIAL = 10.0   # Strong anchor early in training
-WEIGHT_GEOMETRY_FINAL = 0.1      # Relaxed anchor at convergence
-WEIGHT_GEOMETRY_DECAY = 100      # τ = 100 epochs: schedule completes within 500-epoch budget
+WEIGHT_GEOMETRY_FINAL   = 0.1    # Relaxed anchor at convergence
+WEIGHT_GEOMETRY_DECAY   = 100    # τ = 100 epochs
 WEIGHT_RAMACHANDRAN = 0.5        # Sequence-aware Ramachandran prior
 WEIGHT_CA_SHIFTS = 1.0
-WEIGHT_RDC_GEL = 1.0
+WEIGHT_RDC_GEL     = 1.0
 WEIGHT_RDC_NEG_GEL = 1.0
-WEIGHT_RDC_PEG = 1.0
+WEIGHT_RDC_PEG     = 1.0
 
 
 def kabsch_rmsd(A: np.ndarray, B: np.ndarray) -> float:
@@ -132,11 +148,11 @@ def main() -> None:
     # 3. Load and set up all three RDC media
     # ------------------------------------------------------------------
     rdcs = load_bmrb_rdcs(BENCH_DIR / "bmrb16746_GmR58A.str")
-    rdc_list_names = sorted(rdcs.keys())  # e.g. ["RDC_list_1", "RDC_list_2", "RDC_list_3"]
+    rdc_list_names = sorted(rdcs.keys())  # ["RDC_list_1", "RDC_list_2", "RDC_list_3"]
 
-    rdc_terms: list[FixedTensorRDCLoss] = []
-    q_eval_fns = []
-    rdc_labels = []
+    rdc_terms:  list[FixedTensorRDCLoss] = []
+    q_eval_fns: list[Any] = []
+    rdc_labels: list[str] = []
     for name in rdc_list_names:
         d = rdcs[name]
         loss_fn, q_fn, tensor_fn, n_matched = make_rdc_refinement_fns(
@@ -152,17 +168,19 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 4. Build joint loss: geometry(0) + rama(1) + shifts(2) + 3 RDC terms(3,4,5)
     # ------------------------------------------------------------------
+    from diff_integrator.terms.ramachandran import RamachandranLoss  # noqa: PLC0415
+
     geom_loss = GeometryLoss(target_coords=coords, target_weight=1.0)
     rama_loss = RamachandranLoss(residue_types=list(res_names))
     rdc_weights = [WEIGHT_RDC_GEL, WEIGHT_RDC_NEG_GEL, WEIGHT_RDC_PEG]
     joint_loss = JointLoss(
-        [(geom_loss, WEIGHT_GEOMETRY_INITIAL)]        # index 0 — annealed
-        + [(rama_loss, WEIGHT_RAMACHANDRAN)]           # index 1 — fixed
-        + [(ca_loss, WEIGHT_CA_SHIFTS)]               # index 2
-        + [(t, w) for t, w in zip(rdc_terms, rdc_weights)]  # indices 3,4,5
+        [(geom_loss, WEIGHT_GEOMETRY_INITIAL)]               # index 0 — annealed
+        + [(rama_loss, WEIGHT_RAMACHANDRAN)]                  # index 1 — fixed
+        + [(ca_loss, WEIGHT_CA_SHIFTS)]                      # index 2
+        + [(t, w) for t, w in zip(rdc_terms, rdc_weights, strict=False)]  # indices 3,4,5
     )
 
-    # Annealed geometry weight: strong anchor → relaxed
+    # Annealed geometry weight: strong anchor → relaxed, via weight_schedules.
     geom_schedule = ExponentialDecaySchedule(
         initial_weight=WEIGHT_GEOMETRY_INITIAL,
         final_weight=WEIGHT_GEOMETRY_FINAL,
@@ -180,125 +198,101 @@ def main() -> None:
 
     print("\n--- Baseline (NMR model 1, pre-refinement) ---")
     print(f"  Cα RMSD: {float(ca_loss((init_phi, init_psi), init_coords)):.3f} ppm")
-    for label, q_fn in zip(rdc_labels, q_eval_fns):
+    for label, q_fn in zip(rdc_labels, q_eval_fns, strict=False):
         print(f"  Q ({label}): {float(q_fn(init_coords)):.3f}")
 
     # ------------------------------------------------------------------
-    # 6. Custom training loop with periodic tensor updates
+    # 6. Per-epoch callback: tensor updates + Q logging + best-Q checkpoint
+    #
+    # ``IntegrativeRefiner.run()`` tracks best_params by total training loss.
+    # For GmR58A, mean Q-factor across all three media is the scientifically
+    # correct checkpoint criterion.  We maintain a separate best-Q tracker in
+    # the callback closure and expose it via ``best_q_params`` / ``best_q_epoch``.
     # ------------------------------------------------------------------
     print(f"\nRefining for {EPOCHS} epochs "
           f"(tensor update every {TENSOR_UPDATE_INTERVAL} steps, "
           f"geometry weight annealed {WEIGHT_GEOMETRY_INITIAL}→{WEIGHT_GEOMETRY_FINAL})...")
 
-    import jax  # noqa: PLC0415
-    import optax  # noqa: PLC0415
+    # Mutable best-Q state tracked across callback invocations
+    _best_q_state: dict[str, Any] = {
+        "mean_q":  float("inf"),
+        "params":  (init_phi, init_psi),
+        "epoch":   0,
+    }
 
-    optimizer = optax.chain(
-        optax.clip_by_global_norm(1.0),
-        optax.adam(LEARNING_RATE),
-    )
-    opt_state = optimizer.init((init_phi, init_psi))
-    params = (init_phi, init_psi)
-    loss_history: list[float] = []
-    weight_history: list[float] = []
-
-    # Best-checkpoint tracking (by mean Q-factor across all media)
-    best_mean_q = float("inf")
-    best_params = params
-    best_epoch = 0
-
-    # The JIT step function accepts the current weight vector as an explicit
-    # JAX array argument.  This is essential for geometry-weight annealing:
-    # JAX @jit bakes Python-float closure variables as compile-time constants,
-    # so set_weight() mutations would be invisible to the compiled XLA graph.
-    # Passing weights as a dynamic array causes JAX to substitute the live
-    # values each call without recompilation.
-    terms = joint_loss.terms  # stable reference
-
-    @jax.jit
-    def step(p, state, current_weights):  # type: ignore[no-untyped-def]
-        def objective(pp):  # type: ignore[no-untyped-def]
-            c = build_backbone(pp[0], pp[1])
-            total = jax.numpy.array(0.0)
-            for i, (term, _) in enumerate(terms):
-                total = total + current_weights[i] * term(pp, c)
-            return total
-
-        loss_val, grads = jax.value_and_grad(objective)(p)
-        updates, new_state = optimizer.update(grads, state)
-        new_p = optax.apply_updates(p, updates)
-        return new_p, new_state, loss_val
-
-    for epoch in range(EPOCHS):
-        # 6a. Update geometry weight (annealing)
-        new_geom_weight = geom_schedule(epoch)
-        joint_loss.set_weight(0, new_geom_weight)
-        weight_history.append(new_geom_weight)
-
-        # 6b. Update RDC tensors (outside the gradient)
-        curr_coords = build_backbone(params[0], params[1])
+    def epoch_callback(epoch: int, params: Any, coords_arg: jnp.ndarray) -> None:
+        # Tensor updates outside the gradient tape
         for term in rdc_terms:
-            term.maybe_update_tensor(curr_coords, epoch)
+            term.maybe_update_tensor(coords_arg, epoch)
 
-        # 6c. Gradient step — pass live weights as explicit dynamic input
-        current_weights = jax.numpy.array([w for _, w in joint_loss.terms])
-        params, opt_state, loss_val = step(params, opt_state, current_weights)
-        loss_history.append(float(loss_val))
+        # Best-Q checkpoint (every BEST_Q_CHECK_INTERVAL epochs)
+        if (epoch + 1) % BEST_Q_CHECK_INTERVAL == 0:
+            mean_q = sum(float(q_fn(coords_arg)) for q_fn in q_eval_fns) / len(q_eval_fns)
+            if mean_q < _best_q_state["mean_q"]:
+                _best_q_state["mean_q"]  = mean_q
+                _best_q_state["params"]  = params
+                _best_q_state["epoch"]   = epoch + 1
 
-        # Best-checkpoint: save params with lowest mean Q across all media
-        if (epoch + 1) % 10 == 0:
-            _c = build_backbone(params[0], params[1])
-            _mean_q = sum(float(q_fn(_c)) for q_fn in q_eval_fns) / len(q_eval_fns)
-            if _mean_q < best_mean_q:
-                best_mean_q = _mean_q
-                best_params = params
-                best_epoch = epoch + 1
-
-        if (epoch + 1) % 100 == 0:
-            c = build_backbone(params[0], params[1])
+        # Q-factor and geometry-weight logging
+        if (epoch + 1) % LOG_INTERVAL == 0:
             q_strs = "  ".join(
-                f"Q({lbl.replace('RDC_list_', 'L')})={float(q_fn(c)):.3f}"
-                for lbl, q_fn in zip(rdc_labels, q_eval_fns)
+                f"Q({lbl.replace('RDC_list_', 'L')})={float(q_fn(coords_arg)):.3f}"
+                for lbl, q_fn in zip(rdc_labels, q_eval_fns, strict=False)
             )
-            print(f"  Epoch {epoch + 1:4d}: loss={loss_val:.4f}  {q_strs}  "
-                  f"geom_w={new_geom_weight:.3f}")
+            print(f"  Epoch {epoch + 1:4d}: {q_strs}")
 
     # ------------------------------------------------------------------
-    # 7. Final evaluation — report best checkpoint AND last iterate
+    # 7. Refinement — single refiner.run() call
     # ------------------------------------------------------------------
-    final_phi, final_psi = params
+    result = refiner.run(
+        init_params=(init_phi, init_psi),
+        epochs=EPOCHS,
+        learning_rate=LEARNING_RATE,
+        kinematics_fn=lambda p: build_backbone(p[0], p[1]),
+        weight_schedules={0: geom_schedule},
+        per_epoch_callbacks=[epoch_callback],
+    )
+
+    # ------------------------------------------------------------------
+    # 8. Final evaluation — report best-Q checkpoint AND last iterate
+    # ------------------------------------------------------------------
+    final_phi, final_psi = result.final_params
     final_coords = build_backbone(final_phi, final_psi)
-    best_phi, best_psi = best_params
-    best_coords = build_backbone(best_phi, best_psi)
-    init_ca_rmsd = float(ca_loss((init_phi, init_psi), init_coords))
-    final_ca_rmsd = float(ca_loss((final_phi, final_psi), final_coords))
-    best_ca_rmsd = float(ca_loss((best_phi, best_psi), best_coords))
-    rmsd_final = kabsch_rmsd(init_coords, final_coords)
-    rmsd_best = kabsch_rmsd(init_coords, best_coords)
 
-    print(f"\n--- Best Checkpoint (epoch {best_epoch}) ---")
+    best_phi, best_psi = _best_q_state["params"]
+    best_coords = build_backbone(best_phi, best_psi)
+    best_epoch  = _best_q_state["epoch"]
+
+    init_ca_rmsd  = float(ca_loss((init_phi,  init_psi),  init_coords))
+    final_ca_rmsd = float(ca_loss((final_phi, final_psi), final_coords))
+    best_ca_rmsd  = float(ca_loss((best_phi,  best_psi),  best_coords))
+    rmsd_final    = kabsch_rmsd(init_coords, final_coords)
+    rmsd_best     = kabsch_rmsd(init_coords, best_coords)
+
+    print(f"\n--- Best Checkpoint by mean Q-factor (epoch {best_epoch}) ---")
     print(f"  Cα RMSD: {best_ca_rmsd:.3f} ppm  (baseline: {init_ca_rmsd:.3f})")
-    for label, q_fn in zip(rdc_labels, q_eval_fns):
+    for label, q_fn in zip(rdc_labels, q_eval_fns, strict=False):
         b = float(q_fn(init_coords))
         a = float(q_fn(best_coords))
         print(f"  Q ({label}): {b:.3f} → {a:.3f}  (Δ {a - b:+.3f})")
     print(f"  Structural RMSD: {rmsd_best:.3f} Å to NMR model 1")
 
-    print("\n--- Final Iterate (epoch 500) ---")
+    print(f"\n--- Final Iterate (epoch {result.epochs_run}) ---")
     print(f"  Cα RMSD: {final_ca_rmsd:.3f} ppm")
-    for label, q_fn in zip(rdc_labels, q_eval_fns):
+    for label, q_fn in zip(rdc_labels, q_eval_fns, strict=False):
         print(f"  Q ({label}): {float(q_fn(final_coords)):.3f}")
     print(f"  Structural RMSD: {rmsd_final:.3f} Å to NMR model 1")
 
     # ------------------------------------------------------------------
-    # 8. Save artefacts  (best checkpoint is the primary output)
+    # 9. Save artefacts  (best-Q checkpoint is the primary output)
     # ------------------------------------------------------------------
     results_dir = Path("benchmarks/results/GmR58A")
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    np.save(results_dir / "loss_history.npy", np.array(loss_history))
-    np.save(results_dir / "geometry_weight_history.npy", np.array(weight_history))
-    for label, q_fn in zip(rdc_labels, q_eval_fns):
+    np.save(results_dir / "loss_history.npy", np.array(result.loss_history))
+    np.save(results_dir / "geometry_weight_history.npy",
+            np.array(list(result.weight_history.get(0, []))))
+    for label, q_fn in zip(rdc_labels, q_eval_fns, strict=False):
         tag = label.replace("RDC_list_", "rdc_list")
         np.save(results_dir / f"q_{tag}_after.npy",
                 np.array([float(q_fn(best_coords))]))
@@ -317,9 +311,10 @@ def main() -> None:
     best_struct.coord = np.array(best_coords)
     f_best = pdb.PDBFile()
     f_best.set_structure(best_struct)
-    f_best.write(str(results_dir / "final.pdb"))  # best checkpoint = canonical output
+    f_best.write(str(results_dir / "final.pdb"))  # best-Q = canonical output
 
-    print(f"\n  Results saved to {results_dir}/  (best checkpoint at epoch {best_epoch})")
+    print(f"\n  Results saved to {results_dir}/  "
+          f"(best-Q checkpoint at epoch {best_epoch})")
 
 
 if __name__ == "__main__":
