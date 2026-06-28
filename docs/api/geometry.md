@@ -114,3 +114,129 @@ grad_rg = jax.grad(lambda c: compute_rg(c, masses))(coords)
 ```
 
 ::: diff_biophys.geometry.macroscopic
+
+---
+
+## Backbone Bond-Geometry Penalties
+
+`diff_integrator.terms.geometry.BondLengthPenalty` and `diff_integrator.terms.geometry.BondAnglePenalty`
+
+Harmonic restraints on backbone bond lengths and angles toward **Engh & Huber (1991)** ideal values. These are the Cartesian-mode analogues of the hard geometric constraints enforced implicitly by the NeRF builder, and should be included in any Cartesian refinement to prevent backbone distortion during gradient descent.
+
+### `make_backbone_bond_geometry`
+
+Factory function that constructs both penalty terms simultaneously from residue names:
+
+```python
+from diff_integrator.terms.geometry import make_backbone_bond_geometry
+
+bond_penalty, angle_penalty = make_backbone_bond_geometry(residue_names)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `residue_names` | `Sequence[str]` | One-letter or three-letter residue codes in chain order |
+
+Returns `(BondLengthPenalty, BondAnglePenalty)`.
+
+### `BondLengthPenalty`
+
+Harmonic penalty on the three backbone bond types per residue:
+
+| Bond | Engh & Huber ideal (Å) |
+|---|---|
+| N–Cα | 1.458 |
+| Cα–C | 1.525 |
+| C–N | 1.329 |
+
+**`__call__(params, coords)`** — `coords` must be `(3N, 3)` Cartesian backbone atom positions (N, Cα, C interleaved). Returns a scalar penalty.
+
+Typical weight in `JointLoss`: **50.0** (stiff, geometry must be tight).
+
+At convergence on HR2876B: bond RMSD **0.0007 Å**.
+
+### `BondAnglePenalty`
+
+Harmonic penalty on the three backbone angle types per residue:
+
+| Angle | Engh & Huber ideal (°) |
+|---|---|
+| N–Cα–C | 111.2 |
+| Cα–C–N | 116.2 |
+| C–N–Cα | 121.7 |
+
+**`__call__(params, coords)`** — same `(3N, 3)` Cartesian layout as `BondLengthPenalty`. Returns a scalar penalty.
+
+Typical weight in `JointLoss`: **10.0** (softer than bond lengths).
+
+At convergence on HR2876B: angle RMSD **0.33°**.
+
+**Example**
+
+```python
+from diff_integrator.loss import JointLoss
+from diff_integrator.terms.geometry import GeometryLoss, make_backbone_bond_geometry
+
+bond_pen, angle_pen = make_backbone_bond_geometry(residue_names)
+anchor = GeometryLoss(target_coords=starting_coords)
+
+joint_loss = JointLoss([
+    (anchor,    5.0),
+    (bond_pen,  50.0),
+    (angle_pen, 10.0),
+])
+```
+
+---
+
+## Cartesian Cα Chemical Shift Loss
+
+### `CartesianCAShiftLoss`
+
+`diff_integrator.terms.geometry.CartesianCAShiftLoss`
+
+A `LossTerm` that predicts Cα chemical shifts directly from **Cartesian backbone coordinates** by extracting φ/ψ angles on-the-fly through the differentiable `compute_phi_psi` function. Use this instead of `CAShiftLoss` when operating in Cartesian mode (`kinematics_fn=None`).
+
+**Constructor**
+
+```python
+CartesianCAShiftLoss(
+    exp_res_ids: ArrayLike,
+    exp_shifts: ArrayLike,
+    struct_res_ids: ArrayLike,
+    struct_res_names: Sequence[str],
+)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `exp_res_ids` | `ArrayLike` | Residue IDs for each experimental shift value |
+| `exp_shifts` | `ArrayLike` | Experimental Cα chemical shift values (ppm) |
+| `struct_res_ids` | `ArrayLike` | Residue IDs present in the structure (for index alignment) |
+| `struct_res_names` | `Sequence[str]` | Residue names in chain order (used for random-coil reference lookup) |
+
+**`name`** attribute: `"ca_shift"`
+
+**`__call__(params, coords)`** — `coords` are `(3N, 3)` Cartesian backbone atom positions. Internally calls `compute_phi_psi(coords)` to extract torsion angles, then feeds them to `predict_ca_shifts`. Returns MSE loss (ppm²) over matched residues.
+
+**When to use vs `CAShiftLoss`**
+
+| | `CAShiftLoss` | `CartesianCAShiftLoss` |
+|---|---|---|
+| Parameter space | Dihedrals (φ, ψ) | Cartesian (x, y, z) |
+| Requires `kinematics_fn` | Yes (NeRF builder) | No |
+| φ/ψ extraction | Direct (params *are* angles) | `compute_phi_psi` on-the-fly |
+| Typical use | NeRF-mode refinement | Cartesian-mode refinement |
+
+**Example**
+
+```python
+from diff_integrator.terms.geometry import CartesianCAShiftLoss
+
+shift_term = CartesianCAShiftLoss(
+    exp_res_ids=exp_res_ids,
+    exp_shifts=exp_ca_shifts,
+    struct_res_ids=struct_res_ids,
+    struct_res_names=residue_names,
+)
+```
