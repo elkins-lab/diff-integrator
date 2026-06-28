@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-import pytest
 from jax import grad
 
 from diff_integrator.terms.ramachandran import RamachandranLoss

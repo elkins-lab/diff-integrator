@@ -163,7 +163,7 @@ def test_exponential_decay_schedule_monotonic():
     """Weights should be strictly decreasing for initial > final."""
     sched = ExponentialDecaySchedule(initial_weight=5.0, final_weight=0.5, decay_epochs=100)
     weights = [sched(e) for e in range(0, 500, 10)]
-    for a, b in zip(weights, weights[1:]):
+    for a, b in zip(weights, weights[1:], strict=False):
         assert a > b, f"Not monotonically decreasing: {a} <= {b}"
 
 
@@ -264,6 +264,7 @@ def test_no_weight_history_without_schedules():
 # ---------------------------------------------------------------------------
 
 import pytest  # noqa: E402
+
 from diff_integrator.optimizer import EarlyStopping  # noqa: E402
 
 
@@ -532,7 +533,7 @@ def test_per_epoch_callbacks_fired_even_when_log_interval_skips():
 
 def test_per_epoch_callbacks_multiple_callbacks():
     """Multiple callbacks in the list are all called."""
-    target = jnp.array([[0.0]])
+    jnp.array([[0.0]])
     init = jnp.array([[1.0]])
 
     class SimpleLoss(LossTerm):
@@ -560,7 +561,7 @@ def test_per_epoch_callbacks_multiple_callbacks():
 
 def test_per_epoch_callback_receives_pre_step_params():
     """The params passed to each callback are the CURRENT (pre-update) params."""
-    target = jnp.array([[0.0]])
+    jnp.array([[0.0]])
     init = jnp.array([[5.0]])
 
     class SimpleLoss(LossTerm):
@@ -574,7 +575,7 @@ def test_per_epoch_callback_receives_pre_step_params():
     def callback(epoch: int, params: Any, coords: jnp.ndarray) -> None:
         params_at_each_epoch.append(float(params[0, 0]))
 
-    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+    IntegrativeRefiner(loss_fn=loss_fn).run(
         init_params=init,
         epochs=5,
         learning_rate=0.5,

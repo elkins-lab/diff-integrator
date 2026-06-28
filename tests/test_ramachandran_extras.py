@@ -5,7 +5,6 @@ from jax import grad
 from diff_integrator.terms.ramachandran import RamachandranLoss
 
 
-
 def test_gly_epsilon_basin_lower_penalty_than_general():
     """GLY should penalise the ε-basin (φ≈+60°, ψ≈-120°) less than ALA does.
 

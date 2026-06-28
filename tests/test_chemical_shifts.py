@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import grad
 
-from diff_integrator.terms.chemical_shifts import CAShiftLoss, CartesianCAShiftLoss
+from diff_integrator.terms.chemical_shifts import CartesianCAShiftLoss, CAShiftLoss
 
 
 def test_ca_shift_loss() -> None:
@@ -59,9 +59,9 @@ def _build_straight_backbone(n_residues: int) -> jnp.ndarray:
     import math  # noqa: PLC0415
 
     from diff_biophys.geometry.backbone import (  # noqa: PLC0415
+        CA_C_LENGTH,
         N_CA_C_ANGLE,
         N_CA_LENGTH,
-        CA_C_LENGTH,
         make_backbone_builder,
     )
 

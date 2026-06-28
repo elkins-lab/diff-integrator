@@ -4,13 +4,11 @@ import pytest
 from jax import grad
 
 from diff_integrator.terms.nmr import (
+    _IDEAL_RATIO,
     FixedTensorRDCLoss,
     RDCLoss,
     make_rdc_cv_refinement_fns,
-    _MIN_TRAIN_RDCS_FOR_TENSOR,
-    _IDEAL_RATIO,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -230,7 +228,6 @@ def test_cv_split_min_train_enforced():
 
 def test_cv_loss_fn_returns_finite_scalar():
     """loss_fn from CV factory must return a finite scalar."""
-    from diff_biophys.nmr.rdc import make_rdc_refinement_fns as _orig
     exp_res_ids, exp_rdcs, struct_res_ids = _make_cv_test_data(30)
     # Use make_rdc_refinement_fns to get real coords layout, then test our factory
     loss_fn, q_eval_fn, make_tensor_fn, val_q_fn, n_train, n_val = (
@@ -474,7 +471,7 @@ def test_fixed_tensor_rdc_loss_name():
 def test_rdc_loss_deprecated_name():
     """Deprecated RDCLoss must expose name='rdc_legacy'."""
     import warnings  # noqa: PLC0415
-    coords = jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
     atom_pairs = jnp.array([[0, 1]])
     exp_rdcs = jnp.array([10.0])
     with warnings.catch_warnings():

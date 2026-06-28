@@ -88,7 +88,7 @@ def test_saxs_loss_no_scaling():
 def test_saxs_loss_invalid_scale_mode_raises():
     """SAXSLoss must raise ValueError when given an unrecognised scale_mode."""
     import pytest  # noqa: PLC0415
-    coords = jnp.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]])
+    jnp.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]])
     q_values = jnp.array([0.1])
     form_factors = jnp.ones((2, 1))
     exp_intensities = jnp.array([1.0])

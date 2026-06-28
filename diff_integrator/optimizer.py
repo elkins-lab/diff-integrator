@@ -294,7 +294,10 @@ class IntegrativeRefiner:
                 for _cb in per_epoch_callbacks:
                     _cb(epoch, params, _cb_coords)
 
-            current_weights = jnp.array([w for _, w in self.loss_fn.terms])
+            current_weights = jnp.array([
+                0.0 if self.loss_fn.is_frozen(i) else w
+                for i, (_, w) in enumerate(self.loss_fn.terms)
+            ])
             params, opt_state, loss_val = step(params, opt_state, current_weights)
             current_loss = float(loss_val)
             loss_history.append(current_loss)

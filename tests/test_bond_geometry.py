@@ -5,27 +5,25 @@ Covers BondLengthPenalty, BondAnglePenalty, and make_backbone_bond_geometry
 for both unit-level correctness and end-to-end Cartesian refinement behaviour.
 """
 
-import numpy as np
-import pytest
 import jax
 import jax.numpy as jnp
-from jax import grad
-
+import numpy as np
+import pytest
 from diff_biophys.geometry.backbone import (
-    CA_C_LENGTH,
-    CA_C_N_ANGLE,
     C_N_CA_ANGLE,
     C_N_LENGTH,
+    CA_C_LENGTH,
+    CA_C_N_ANGLE,
     N_CA_C_ANGLE,
     N_CA_LENGTH,
 )
+from jax import grad
 
 from diff_integrator.terms.bond_geometry import (
     BondAnglePenalty,
     BondLengthPenalty,
     make_backbone_bond_geometry,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -54,7 +52,6 @@ def _build_ideal_backbone(n_residues: int) -> jnp.ndarray:
     exactly at their ideal values; no NeRF drift.  Returns ``(3N, 3)``.
     """
     from diff_biophys.geometry.backbone import make_backbone_builder
-    import numpy as np
 
     # Start at a 3-atom seed with exactly ideal N–CA–C geometry
     seed = _ideal_triplet(N_CA_LENGTH, N_CA_C_ANGLE)
@@ -268,8 +265,8 @@ def test_make_backbone_bond_geometry_near_zero_on_ideal_chain():
     coords = _build_ideal_backbone(n)
     bond_pen, angle_pen = make_backbone_bond_geometry(n)
 
-    bond_loss = float(bond_pen(None, coords))
-    angle_loss = float(angle_pen(None, coords))
+    float(bond_pen(None, coords))
+    float(angle_pen(None, coords))
 
     # NeRF uses the same Engh & Huber values but accumulates float32 rounding
     # across the chain.  Losses are very small but not exactly zero.

@@ -148,3 +148,108 @@ def test_evaluate_terms_unweighted_independent_of_weight_change():
     raw_after = joint_loss.evaluate_terms(None, coords, unweighted=True)["a"]
 
     assert raw_before == pytest.approx(raw_after)
+
+
+# ---------------------------------------------------------------------------
+# freeze_term / unfreeze_term / is_frozen
+# ---------------------------------------------------------------------------
+
+
+def test_freeze_term_removes_contribution():
+    """Frozen term should contribute zero to __call__."""
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    loss_b = DummyLossB()
+    loss_b.name = "b"
+    joint_loss = JointLoss(terms=[(loss_a, 1.0), (loss_b, 1.0)])
+    coords = jnp.array([2.0, 0.0, 0.0])
+
+    full_loss = float(joint_loss(None, coords))   # a + b contribution
+
+    joint_loss.freeze_term(0)                     # freeze term a
+    frozen_loss = float(joint_loss(None, coords)) # only b should contribute
+
+    assert joint_loss.is_frozen(0)
+    assert not joint_loss.is_frozen(1)
+    # Frozen term a contributed 4.0 (sum(coords^2)=4); only b remains.
+    # DummyLossB returns sum(coords) = 2.0.
+    assert frozen_loss < full_loss
+    assert frozen_loss == pytest.approx(2.0, rel=1e-5)
+
+
+def test_unfreeze_term_restores_contribution():
+    """Unfreezing a term should restore it to the gradient objective."""
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    joint_loss = JointLoss(terms=[(loss_a, 1.0)])
+    coords = jnp.array([2.0, 0.0, 0.0])
+
+    original = float(joint_loss(None, coords))
+    joint_loss.freeze_term(0)
+    assert float(joint_loss(None, coords)) == pytest.approx(0.0, abs=1e-7)
+
+    joint_loss.unfreeze_term(0)
+    restored = float(joint_loss(None, coords))
+    assert restored == pytest.approx(original, rel=1e-6)
+    assert not joint_loss.is_frozen(0)
+
+
+def test_is_frozen_default_false():
+    """No terms should be frozen at construction."""
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    joint_loss = JointLoss(terms=[(loss_a, 1.0)])
+    assert not joint_loss.is_frozen(0)
+
+
+def test_freeze_out_of_range_raises():
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    joint_loss = JointLoss(terms=[(loss_a, 1.0)])
+    with pytest.raises(IndexError, match="out of range"):
+        joint_loss.freeze_term(5)
+
+
+def test_unfreeze_out_of_range_raises():
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    joint_loss = JointLoss(terms=[(loss_a, 1.0)])
+    with pytest.raises(IndexError, match="out of range"):
+        joint_loss.unfreeze_term(-1)
+
+
+def test_evaluate_terms_includes_frozen_with_suffix():
+    """Frozen terms should appear in evaluate_terms output with '(frozen)' suffix."""
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    loss_b = DummyLossB()
+    loss_b.name = "b"
+    joint_loss = JointLoss(terms=[(loss_a, 1.0), (loss_b, 1.0)])
+    coords = jnp.array([2.0, 0.0, 0.0])
+
+    joint_loss.freeze_term(0)
+    result = joint_loss.evaluate_terms(None, coords)
+
+    # term 'a' is frozen — key should be 'a(frozen)'
+    assert "a(frozen)" in result
+    # term 'b' is not frozen — key should be plain 'b'
+    assert "b" in result
+    # both values should still be evaluated
+    assert result["a(frozen)"] == pytest.approx(4.0, rel=1e-5)   # raw=4.0 * weight 1.0
+
+
+def test_freeze_multiple_terms():
+    """Multiple terms can be frozen simultaneously."""
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    loss_b = DummyLossB()
+    loss_b.name = "b"
+    joint_loss = JointLoss(terms=[(loss_a, 2.0), (loss_b, 3.0)])
+    coords = jnp.array([2.0, 0.0, 0.0])
+
+    joint_loss.freeze_term(0)
+    joint_loss.freeze_term(1)
+    assert float(joint_loss(None, coords)) == pytest.approx(0.0, abs=1e-7)
+    assert joint_loss.is_frozen(0)
+    assert joint_loss.is_frozen(1)
+

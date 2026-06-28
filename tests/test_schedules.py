@@ -11,7 +11,6 @@ import pytest
 
 from diff_integrator.schedules import CosineAnnealingSchedule, LinearSchedule
 
-
 # ---------------------------------------------------------------------------
 # LinearSchedule
 # ---------------------------------------------------------------------------
@@ -50,14 +49,14 @@ def test_linear_schedule_increasing_warmup():
 def test_linear_schedule_monotonic_decreasing():
     sched = LinearSchedule(5.0, 0.5, 100)
     weights = [sched(e) for e in range(0, 101, 5)]
-    for a, b in zip(weights, weights[1:]):
+    for a, b in zip(weights, weights[1:], strict=False):
         assert a >= b
 
 
 def test_linear_schedule_monotonic_increasing():
     sched = LinearSchedule(0.5, 5.0, 100)
     weights = [sched(e) for e in range(0, 101, 5)]
-    for a, b in zip(weights, weights[1:]):
+    for a, b in zip(weights, weights[1:], strict=False):
         assert a <= b
 
 
@@ -116,7 +115,7 @@ def test_cosine_schedule_clamped_beyond_decay_epochs():
 def test_cosine_schedule_monotonic_decreasing():
     sched = CosineAnnealingSchedule(5.0, 0.5, 100)
     weights = [sched(e) for e in range(0, 101, 2)]
-    for a, b in zip(weights, weights[1:]):
+    for a, b in zip(weights, weights[1:], strict=False):
         assert a >= b - 1e-10  # allow for floating-point equality at clamped region
 
 

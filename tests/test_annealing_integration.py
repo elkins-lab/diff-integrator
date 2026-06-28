@@ -20,7 +20,6 @@ from diff_integrator.loss import JointLoss, LossTerm
 from diff_integrator.optimizer import IntegrativeRefiner
 from diff_integrator.schedules import ExponentialDecaySchedule
 
-
 # ---------------------------------------------------------------------------
 # Minimal synthetic loss terms for controlled testing
 # ---------------------------------------------------------------------------
@@ -89,7 +88,7 @@ def test_annealed_weight_decays_in_run():
 
     # Weight should be strictly decreasing
     wh = result.weight_history[0]
-    assert all(a > b for a, b in zip(wh, wh[1:]))
+    assert all(a > b for a, b in zip(wh, wh[1:], strict=False))
 
 
 # ---------------------------------------------------------------------------
