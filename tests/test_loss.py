@@ -1,6 +1,7 @@
 from typing import Any
 
 import jax.numpy as jnp
+import pytest
 from jax import grad
 
 from diff_integrator.loss import JointLoss, LossTerm
@@ -107,3 +108,43 @@ def test_joint_loss_set_weight_out_of_range():
         joint_loss.set_weight(1, 2.0)  # only index 0 exists
     with pytest.raises(IndexError):
         joint_loss.set_weight(-1, 2.0)
+
+
+# ---------------------------------------------------------------------------
+# evaluate_terms unweighted
+# ---------------------------------------------------------------------------
+
+
+def test_evaluate_terms_unweighted_false_returns_weighted():
+    """Default (unweighted=False) returns weight * raw value."""
+    loss_a = DummyLossA()
+    loss_a.name = "loss_a"
+    joint_loss = JointLoss(terms=[(loss_a, 3.0)])
+    coords = jnp.array([1.0, 2.0, 3.0])   # sum(x^2) = 14
+    result = joint_loss.evaluate_terms(None, coords)
+    assert result["loss_a"] == pytest.approx(3.0 * 14.0)
+
+
+def test_evaluate_terms_unweighted_true_returns_raw():
+    """unweighted=True returns the raw term value, independent of weight."""
+    loss_a = DummyLossA()
+    loss_a.name = "loss_a"
+    joint_loss = JointLoss(terms=[(loss_a, 99.0)])  # high weight should NOT affect output
+    coords = jnp.array([1.0, 2.0, 3.0])   # sum(x^2) = 14
+    result = joint_loss.evaluate_terms(None, coords, unweighted=True)
+    assert result["loss_a"] == pytest.approx(14.0)
+
+
+def test_evaluate_terms_unweighted_independent_of_weight_change():
+    """After set_weight the unweighted result must not change."""
+    import pytest  # noqa: PLC0415
+    loss_a = DummyLossA()
+    loss_a.name = "a"
+    joint_loss = JointLoss(terms=[(loss_a, 1.0)])
+    coords = jnp.array([2.0, 0.0, 0.0])   # raw = 4.0
+
+    raw_before = joint_loss.evaluate_terms(None, coords, unweighted=True)["a"]
+    joint_loss.set_weight(0, 50.0)
+    raw_after = joint_loss.evaluate_terms(None, coords, unweighted=True)["a"]
+
+    assert raw_before == pytest.approx(raw_after)

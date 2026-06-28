@@ -430,6 +430,8 @@ class RDCLoss(LossTerm):
         loss_type: ``'mse'`` or ``'q_factor'``.
     """
 
+    name: str = "rdc_legacy"
+
     def __init__(
         self,
         atom_pairs: jnp.ndarray,

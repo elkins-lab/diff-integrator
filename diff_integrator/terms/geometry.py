@@ -21,6 +21,8 @@ class GeometryLoss(LossTerm):
         ideal values.
     """
 
+    name: str = "geometry"
+
     def __init__(
         self,
         bonds: jnp.ndarray | None = None,

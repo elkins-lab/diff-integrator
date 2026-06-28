@@ -50,3 +50,36 @@ def test_geometry_loss():
 
     assert gradients.shape == coords.shape
     assert not jnp.any(jnp.isnan(gradients))
+
+
+def test_geometry_loss_target_only():
+    """GeometryLoss with only target_coords computes harmonic position restraint."""
+    from jax import grad  # noqa: PLC0415
+
+    target = jnp.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    current = jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+
+    geom = GeometryLoss(target_coords=target, target_weight=1.0)
+    loss_val = geom(None, current)
+
+    # mean over rows of sum-of-sq per row:
+    # row0: (1^2+0+0)=1, row1: (0+1^2+0)=1 → mean = 1.0
+    assert jnp.isclose(loss_val, 1.0)
+
+    g = grad(lambda c: geom(None, c))(current)
+    assert g.shape == current.shape
+    assert jnp.all(jnp.isfinite(g))
+    assert jnp.any(g != 0.0)
+
+
+def test_geometry_loss_all_none_returns_zero():
+    """GeometryLoss with no components active returns exactly 0."""
+    geom = GeometryLoss()  # all optional args default to None
+    coords = jnp.ones((3, 3))
+    assert float(geom(None, coords)) == 0.0
+
+
+def test_geometry_loss_name_attribute():
+    """GeometryLoss must have a non-empty name so per_term_history keys are meaningful."""
+    assert GeometryLoss.name != ""
+    assert GeometryLoss().name == "geometry"

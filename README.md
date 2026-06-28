@@ -1,9 +1,11 @@
 # ⚙️ Diff-Integrator: The Integrative Refinement Engine
 
 [![Tests](https://github.com/elkins-lab/diff-integrator/actions/workflows/test.yml/badge.svg)](https://github.com/elkins-lab/diff-integrator/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/elkins-lab/diff-integrator/branch/main/graph/badge.svg)](https://codecov.io/gh/elkins-lab/diff-integrator)
 [![PyPI version](https://img.shields.io/pypi/v/diff-integrator.svg)](https://pypi.org/project/diff-integrator/)
 [![Python versions](https://img.shields.io/pypi/pyversions/diff-integrator.svg?cache=bust)](https://pypi.org/project/diff-integrator/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![JAX](https://img.shields.io/badge/framework-JAX-9cf.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyeiIvPjwvc3ZnPg==)](https://github.com/google/jax)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
 

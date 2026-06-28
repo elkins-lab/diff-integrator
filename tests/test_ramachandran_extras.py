@@ -139,3 +139,118 @@ def test_best_params_by_validation_loss():
     # best_epoch should correspond to the minimum in validation_history
     best_val = result.validation_history[result.best_epoch]
     assert best_val == min(result.validation_history)
+
+
+# ---------------------------------------------------------------------------
+# RamachandranLoss — coverage gaps
+# ---------------------------------------------------------------------------
+
+
+def test_ramachandran_unknown_residue_falls_back_to_default():
+    """An unrecognised residue code must silently use the default 3-basin model.
+
+    The ``_lookup()`` helper returns the default basin table for unknown codes;
+    this test verifies the fallback produces a finite, non-negative penalty
+    (i.e., no exception is raised and the result is physically meaningful).
+    """
+    from diff_integrator.terms.ramachandran import RamachandranLoss, _lookup  # noqa: PLC0415
+
+    # Unknown code should fall back to the default table silently
+    default_centres, default_sigma = _lookup("XYZ")
+    known_centres, known_sigma = _lookup("ALA")
+    assert default_centres == known_centres, "XYZ should use default ALA-like centres"
+    assert default_sigma == known_sigma, "XYZ should use default sigma"
+
+    # End-to-end: loss evaluates without error
+    phi = jnp.array([-1.05])
+    psi = jnp.array([-0.78])
+    loss = RamachandranLoss(residue_types=["XYZ"])
+    val = float(loss((phi, psi), None))
+    # RamachandranLoss is a log-probability potential and CAN be negative for
+    # well-favoured angles — we only check finiteness, not sign.
+    assert jnp.isfinite(jnp.array(val)), f"Expected finite value, got {val}"
+
+
+def test_ramachandran_uniform_multi_residue_mean():
+    """Uniform mode returns the mean penalty over all residues.
+
+    For a chain where all residues sit at the alpha-helix centre the total
+    penalty should be close to zero regardless of chain length.
+    """
+    for n in [1, 4, 10]:
+        phi = jnp.full(n, -1.05)
+        psi = jnp.full(n, -0.78)
+        loss = RamachandranLoss()
+        val = float(loss((phi, psi), None))
+        # All residues are exactly at the alpha-helix basin centre
+        assert val < 0.1, f"Expected near-zero penalty for n={n}, got {val:.4f}"
+
+
+def test_ramachandran_uniform_mixed_chain_mean():
+    """Uniform mode mean is between the best and worst individual penalties."""
+    loss = RamachandranLoss()
+    phi_alpha = jnp.array([-1.05])
+    psi_alpha = jnp.array([-0.78])
+    phi_bad = jnp.array([0.0])
+    psi_bad = jnp.array([0.0])
+
+    pen_alpha = float(loss((phi_alpha, psi_alpha), None))
+    pen_bad = float(loss((phi_bad, psi_bad), None))
+
+    # Mixed chain: [alpha, bad]
+    phi_mixed = jnp.array([-1.05, 0.0])
+    psi_mixed = jnp.array([-0.78, 0.0])
+    pen_mixed = float(loss((phi_mixed, psi_mixed), None))
+
+    assert pen_alpha < pen_mixed < pen_bad
+
+
+# ---------------------------------------------------------------------------
+# EarlyStopping mode="max" integration test
+# ---------------------------------------------------------------------------
+
+
+def test_early_stopping_mode_max_fires_when_score_plateaus():
+    """EarlyStopping with mode='max' stops when an increasing score plateaus.
+
+    We use a RisingLoss that returns a value increasing toward a plateau.  The
+    score reaches its maximum quickly and then stays flat.  The mode='max' rule
+    should detect this and stop early.
+    """
+    from typing import Any  # noqa: PLC0415
+
+    from diff_integrator.loss import JointLoss, LossTerm  # noqa: PLC0415
+    from diff_integrator.optimizer import EarlyStopping, IntegrativeRefiner  # noqa: PLC0415
+
+    # A score that rises quickly to ~1.0 and then plateaus
+    class Plateau(LossTerm):
+        name = "plateau"
+        _step = 0
+
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            # Returns 1 - exp(-step/5): rises quickly then flattens
+            val = 1.0 - jnp.exp(jnp.array(-self._step / 5.0))
+            Plateau._step += 1
+            return val
+
+    class QuadLoss(LossTerm):
+        name = "quad"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.mean(params ** 2)
+
+    Plateau._step = 0
+    loss_fn = JointLoss([(QuadLoss(), 1.0), (Plateau(), 0.0)])
+    refiner = IntegrativeRefiner(loss_fn=loss_fn)
+    result = refiner.run(
+        init_params=jnp.ones((2,)) * 5.0,
+        epochs=500,
+        early_stopping=EarlyStopping(
+            term_index=1,
+            patience=20,
+            min_delta=1e-4,
+            mode="max",
+        ),
+    )
+    assert result.stopped_early is True
+    assert result.epochs_run < 500
+    assert "term_1" in result.early_stopping_triggered_by

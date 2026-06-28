@@ -68,6 +68,8 @@ class CartesianCAShiftLoss(LossTerm):
         struct_res_names: Residue names in the structural model.
     """
 
+    name: str = "ca_shift_cartesian"
+
     def __init__(
         self,
         exp_res_ids: np.ndarray,

@@ -83,3 +83,26 @@ def test_saxs_loss_no_scaling():
     )
     loss_val = saxs_loss(None, coords)
     assert not jnp.isnan(loss_val)
+
+
+def test_saxs_loss_invalid_scale_mode_raises():
+    """SAXSLoss must raise ValueError when given an unrecognised scale_mode."""
+    import pytest  # noqa: PLC0415
+    coords = jnp.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]])
+    q_values = jnp.array([0.1])
+    form_factors = jnp.ones((2, 1))
+    exp_intensities = jnp.array([1.0])
+    with pytest.raises(ValueError, match="scale_mode"):
+        SAXSLoss(
+            q_values=q_values,
+            exp_intensities=exp_intensities,
+            form_factors=form_factors,
+            scale_mode="log",  # not a valid mode
+        )
+
+
+def test_saxs_loss_name_attribute():
+    """SAXSLoss must expose a non-empty name for per_term_history keying."""
+    from diff_integrator.terms.saxs import SAXSLoss as _SAXSLoss  # noqa: PLC0415
+    assert _SAXSLoss.name != ""
+    assert _SAXSLoss.name == "saxs"

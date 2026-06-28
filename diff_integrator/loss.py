@@ -88,12 +88,27 @@ class JointLoss:
         self.terms[term_index] = (term, weight)
 
     def evaluate_terms(
-        self, params: Any, coords: jnp.ndarray
+        self,
+        params: Any,
+        coords: jnp.ndarray,
+        unweighted: bool = False,
     ) -> dict[str, float]:
-        """Evaluate each term individually and return a dict of
-        name -> weighted loss value."""
+        """Evaluate each term individually and return a dict of name -> value.
+
+        Args:
+            params: The parameters being optimized.
+            coords: (N, 3) atomic coordinates.
+            unweighted: If ``True``, return each term's raw (unweighted) scalar
+                so that values are independent of the current weight schedule
+                and comparable across runs.  If ``False`` (default), return
+                ``weight * term(...)`` — the original behaviour.
+
+        Returns:
+            Dict mapping term name (or ``"term_i"`` fallback) to float value.
+        """
         results: dict[str, float] = {}
         for i, (term, weight) in enumerate(self.terms):
             term_name = term.name or f"term_{i}"
-            results[term_name] = float(weight * term(params, coords))
+            raw = float(term(params, coords))
+            results[term_name] = raw if unweighted else raw * weight
         return results

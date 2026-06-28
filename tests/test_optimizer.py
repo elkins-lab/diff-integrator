@@ -399,3 +399,270 @@ def test_per_term_early_stopping_no_fire_when_none():
     result = IntegrativeRefiner(loss_fn=loss_fn).run(init_params=init, epochs=10)
     assert result.stopped_at_epoch == -1
     assert result.early_stopping_triggered_by == ""
+
+
+# ---------------------------------------------------------------------------
+# log_interval behavior
+# ---------------------------------------------------------------------------
+
+
+def test_log_interval_shortens_per_term_history():
+    """When log_interval=5, per_term_history should have ceil(epochs/5) entries."""
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+
+    class NamedLoss(LossTerm):
+        name = "named"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum((coords - target) ** 2)
+
+    loss_fn = JointLoss([(NamedLoss(), 1.0)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init,
+        epochs=20,
+        log_interval=5,
+    )
+    # Epochs 0, 5, 10, 15 are logged → 4 entries
+    expected_len = len(range(0, 20, 5))
+    assert len(result.per_term_history["named"]) == expected_len
+    # loss_history still has one entry per epoch
+    assert len(result.loss_history) == 20
+
+
+def test_per_term_epochs_matches_log_interval():
+    """per_term_epochs records exactly which epoch indices were logged."""
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+
+    class NamedLoss(LossTerm):
+        name = "nl"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum((coords - target) ** 2)
+
+    loss_fn = JointLoss([(NamedLoss(), 1.0)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init,
+        epochs=15,
+        log_interval=3,
+    )
+    expected = list(range(0, 15, 3))  # [0, 3, 6, 9, 12]
+    assert result.per_term_epochs == expected
+    # Length of per_term_history must match per_term_epochs
+    assert len(result.per_term_history["nl"]) == len(result.per_term_epochs)
+
+
+def test_per_term_epochs_default_log_interval():
+    """With log_interval=1 (default), per_term_epochs == list(range(epochs))."""
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+
+    class NamedLoss(LossTerm):
+        name = "nl"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum((coords - target) ** 2)
+
+    loss_fn = JointLoss([(NamedLoss(), 1.0)])
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(init_params=init, epochs=8)
+    assert result.per_term_epochs == list(range(8))
+
+
+# ---------------------------------------------------------------------------
+# per_epoch_callbacks
+# ---------------------------------------------------------------------------
+
+
+def test_per_epoch_callbacks_fired_every_epoch():
+    """per_epoch_callbacks must be called exactly once per epoch."""
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+
+    class NamedLoss(LossTerm):
+        name = "quad"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum((coords - target) ** 2)
+
+    loss_fn = JointLoss([(NamedLoss(), 1.0)])
+
+    call_log: list[int] = []
+
+    def callback(epoch: int, params: Any, coords: jnp.ndarray) -> None:
+        call_log.append(epoch)
+
+    EPOCHS = 7
+    IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init,
+        epochs=EPOCHS,
+        per_epoch_callbacks=[callback],
+    )
+
+    assert call_log == list(range(EPOCHS)), (
+        f"Expected callbacks at epochs 0..{EPOCHS-1}, got {call_log}"
+    )
+
+
+def test_per_epoch_callbacks_fired_even_when_log_interval_skips():
+    """Callbacks fire at EVERY epoch, not only at log_interval epochs."""
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+
+    class NamedLoss(LossTerm):
+        name = "quad"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum((coords - target) ** 2)
+
+    loss_fn = JointLoss([(NamedLoss(), 1.0)])
+
+    epochs_seen: list[int] = []
+
+    def callback(epoch: int, params: Any, coords: jnp.ndarray) -> None:
+        epochs_seen.append(epoch)
+
+    EPOCHS = 12
+    IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init,
+        epochs=EPOCHS,
+        log_interval=5,          # only 0, 5, 10 would be logged
+        per_epoch_callbacks=[callback],
+    )
+
+    assert epochs_seen == list(range(EPOCHS)), (
+        "Callbacks must fire at ALL epochs, not just log_interval epochs"
+    )
+
+
+def test_per_epoch_callbacks_multiple_callbacks():
+    """Multiple callbacks in the list are all called."""
+    target = jnp.array([[0.0]])
+    init = jnp.array([[1.0]])
+
+    class SimpleLoss(LossTerm):
+        name = "simple"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum(coords ** 2)
+
+    loss_fn = JointLoss([(SimpleLoss(), 1.0)])
+
+    count_a: list[int] = []
+    count_b: list[int] = []
+
+    IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init,
+        epochs=5,
+        per_epoch_callbacks=[
+            lambda e, p, c: count_a.append(e),
+            lambda e, p, c: count_b.append(e),
+        ],
+    )
+
+    assert len(count_a) == 5
+    assert len(count_b) == 5
+
+
+def test_per_epoch_callback_receives_pre_step_params():
+    """The params passed to each callback are the CURRENT (pre-update) params."""
+    target = jnp.array([[0.0]])
+    init = jnp.array([[5.0]])
+
+    class SimpleLoss(LossTerm):
+        name = "simple"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum(coords ** 2)
+
+    loss_fn = JointLoss([(SimpleLoss(), 1.0)])
+    params_at_each_epoch: list[float] = []
+
+    def callback(epoch: int, params: Any, coords: jnp.ndarray) -> None:
+        params_at_each_epoch.append(float(params[0, 0]))
+
+    result = IntegrativeRefiner(loss_fn=loss_fn).run(
+        init_params=init,
+        epochs=5,
+        learning_rate=0.5,
+        per_epoch_callbacks=[callback],
+    )
+
+    # params must start at the initial value at epoch 0
+    assert params_at_each_epoch[0] == 5.0
+    # And decrease (optimizer is reducing the loss)
+    assert params_at_each_epoch[0] > params_at_each_epoch[-1]
+
+
+# ---------------------------------------------------------------------------
+# EarlyStopping term_index out-of-range caught before loop
+# ---------------------------------------------------------------------------
+
+
+def test_early_stopping_invalid_term_index_raises_before_loop():
+    """EarlyStopping with out-of-range term_index must raise IndexError immediately."""
+    import pytest  # noqa: PLC0415
+
+    from diff_integrator.optimizer import EarlyStopping  # noqa: PLC0415
+
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0)])  # 1 term only
+    refiner = IntegrativeRefiner(loss_fn=loss_fn)
+
+    with pytest.raises(IndexError, match="out of range"):
+        refiner.run(
+            init_params=init,
+            epochs=100,
+            early_stopping=EarlyStopping(
+                term_index=5,   # invalid: only index 0 exists
+                patience=10,
+            ),
+        )
+
+
+def test_early_stopping_negative_term_index_raises_before_loop():
+    """EarlyStopping with negative term_index must raise IndexError immediately."""
+    import pytest  # noqa: PLC0415
+
+    from diff_integrator.optimizer import EarlyStopping  # noqa: PLC0415
+
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+    loss_fn = JointLoss([(DummyTargetLoss(target), 1.0)])
+    refiner = IntegrativeRefiner(loss_fn=loss_fn)
+
+    with pytest.raises(IndexError, match="out of range"):
+        refiner.run(
+            init_params=init,
+            epochs=100,
+            early_stopping=EarlyStopping(
+                term_index=-1,   # negative index
+                patience=10,
+            ),
+        )
+
+
+def test_early_stopping_invalid_term_index_in_list_raises_before_loop():
+    """Same IndexError check for a list-of-EarlyStopping config."""
+    import pytest  # noqa: PLC0415
+
+    from diff_integrator.optimizer import EarlyStopping  # noqa: PLC0415
+
+    target = jnp.array([[1.0, 0.0, 0.0]])
+    init = jnp.array([[0.0, 0.0, 0.0]])
+
+    class ValidLoss(LossTerm):
+        name = "v"
+        def __call__(self, params: Any, coords: jnp.ndarray) -> jnp.ndarray:
+            return jnp.sum(coords ** 2)
+
+    # 2-term loss, but early_stopping watches index 3
+    loss_fn = JointLoss([
+        (DummyTargetLoss(target), 1.0),
+        (ValidLoss(), 0.5),
+    ])
+    refiner = IntegrativeRefiner(loss_fn=loss_fn)
+
+    with pytest.raises(IndexError, match="out of range"):
+        refiner.run(
+            init_params=init,
+            epochs=100,
+            early_stopping=[
+                EarlyStopping(term_index=0, patience=10),  # valid
+                EarlyStopping(term_index=3, patience=10),  # INVALID
+            ],
+        )

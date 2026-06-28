@@ -11,6 +11,8 @@ class SAXSLoss(LossTerm):
     Computes the loss between predicted SAXS intensities and experimental data.
     """
 
+    name: str = "saxs"
+
     def __init__(
         self,
         q_values: jnp.ndarray,
@@ -30,6 +32,10 @@ class SAXSLoss(LossTerm):
             scale_mode: How to scale theoretical to experimental data. "lsq" means
                 least-squares optimal scaling factor.
         """
+        if scale_mode not in ("lsq", "none"):
+            raise ValueError(
+                f"SAXSLoss.scale_mode must be 'lsq' or 'none', got {scale_mode!r}"
+            )
         self.q_values = q_values
         self.exp_intensities = exp_intensities
         self.form_factors = form_factors

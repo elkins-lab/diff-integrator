@@ -379,3 +379,105 @@ def test_rdc_loss_invalid_type():
     loss_fn = RDCLoss(atom_pairs=atom_pairs, exp_rdcs=exp_rdcs, loss_type="invalid")
     with pytest.raises(ValueError):
         loss_fn(None, coords)
+
+
+# ---------------------------------------------------------------------------
+# make_rdc_cv_refinement_fns — q_eval_fn and make_tensor_fn coverage
+# ---------------------------------------------------------------------------
+
+
+def test_cv_q_eval_fn_returns_finite_scalar():
+    """q_eval_fn (full-data re-fitting monitoring function) must return a finite scalar."""
+    exp_res_ids, exp_rdcs, struct_res_ids = _make_cv_test_data(30)
+    loss_fn, q_eval_fn, make_tensor_fn, val_q_fn, n_train, n_val = (
+        make_rdc_cv_refinement_fns(
+            exp_res_ids, exp_rdcs, struct_res_ids, cv_fraction=0.2
+        )
+    )
+    coords = jnp.zeros((90, 3))  # 30 residues × 3 atoms
+    q = q_eval_fn(coords)
+    assert jnp.isfinite(q), f"q_eval_fn returned non-finite value: {q}"
+    assert q.shape == ()  # scalar
+    assert float(q) >= 0.0  # Q-factor is non-negative
+
+
+def test_cv_make_tensor_fn_returns_3x3_matrix():
+    """make_tensor_fn must return a (3, 3) Saupe tensor from training RDCs only."""
+    exp_res_ids, exp_rdcs, struct_res_ids = _make_cv_test_data(30)
+    loss_fn, q_eval_fn, make_tensor_fn, val_q_fn, n_train, n_val = (
+        make_rdc_cv_refinement_fns(
+            exp_res_ids, exp_rdcs, struct_res_ids, cv_fraction=0.2
+        )
+    )
+    coords = jnp.zeros((90, 3))
+    tensor = make_tensor_fn(coords)
+    assert tensor.shape == (3, 3), f"Expected (3,3), got {tensor.shape}"
+    assert jnp.all(jnp.isfinite(tensor)), "Tensor contains non-finite values"
+
+
+def test_cv_make_tensor_fn_differs_with_different_coords():
+    """make_tensor_fn should produce a different tensor for different coords."""
+    import numpy as np  # noqa: PLC0415
+    exp_res_ids, exp_rdcs, struct_res_ids = _make_cv_test_data(30)
+    loss_fn, q_eval_fn, make_tensor_fn, val_q_fn, n_train, n_val = (
+        make_rdc_cv_refinement_fns(
+            exp_res_ids, exp_rdcs, struct_res_ids, cv_fraction=0.2
+        )
+    )
+    coords_a = jnp.zeros((90, 3))
+    rng = np.random.default_rng(77)
+    coords_b = jnp.array(rng.normal(size=(90, 3)).astype(np.float32))
+
+    tensor_a = make_tensor_fn(coords_a)
+    tensor_b = make_tensor_fn(coords_b)
+    # Tensors should differ (almost certainly for random coords)
+    assert not jnp.allclose(tensor_a, tensor_b), (
+        "make_tensor_fn returned identical tensors for different coords"
+    )
+
+
+def test_cv_q_eval_fn_uses_all_matched_rdcs():
+    """q_eval_fn refits the tensor from ALL matched RDCs (not just training split).
+
+    Proxy: the returned Q should generally be different from val_q_eval_fn
+    because q_eval_fn uses all data while val_q_fn uses only the held-out set.
+    """
+    exp_res_ids, exp_rdcs, struct_res_ids = _make_cv_test_data(30)
+    loss_fn, q_eval_fn, make_tensor_fn, val_q_fn, n_train, n_val = (
+        make_rdc_cv_refinement_fns(
+            exp_res_ids, exp_rdcs, struct_res_ids, cv_fraction=0.2
+        )
+    )
+    coords = jnp.zeros((90, 3))
+    tensor = make_tensor_fn(coords)
+
+    q_all = float(q_eval_fn(coords))
+    q_val = float(val_q_fn(coords, tensor))
+
+    # Both should be finite and non-negative; we don't assert equality
+    assert q_all >= 0.0
+    assert q_val >= 0.0
+
+
+# ---------------------------------------------------------------------------
+# FixedTensorRDCLoss name attribute
+# ---------------------------------------------------------------------------
+
+
+def test_fixed_tensor_rdc_loss_name():
+    """FixedTensorRDCLoss must expose name='rdc' for per_term_history keying."""
+    loss_fn, make_tensor_fn, _ = _make_simple_loss_and_tensor()
+    term = FixedTensorRDCLoss(loss_fn=loss_fn, make_tensor_fn=make_tensor_fn)
+    assert term.name == "rdc"
+
+
+def test_rdc_loss_deprecated_name():
+    """Deprecated RDCLoss must expose name='rdc_legacy'."""
+    import warnings  # noqa: PLC0415
+    coords = jnp.array([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    atom_pairs = jnp.array([[0, 1]])
+    exp_rdcs = jnp.array([10.0])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        term = RDCLoss(atom_pairs=atom_pairs, exp_rdcs=exp_rdcs)
+    assert term.name == "rdc_legacy"

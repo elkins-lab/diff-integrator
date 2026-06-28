@@ -72,6 +72,7 @@ class RefinementResult:
     final_params: Any
     loss_history: list[float]
     per_term_history: dict[str, list[float]] = field(default_factory=dict)
+    per_term_epochs: list[int] = field(default_factory=list)
     validation_history: list[float] = field(default_factory=list)
     weight_history: dict[int, list[float]] = field(default_factory=dict)
     best_params: Any = None
@@ -107,6 +108,7 @@ class IntegrativeRefiner:
         log_interval: int = 1,
         weight_schedules: dict[int, Callable[[int], float]] | None = None,
         early_stopping: "EarlyStopping | list[EarlyStopping] | None" = None,
+        per_epoch_callbacks: "list[Callable[[int, Any, jnp.ndarray], None]] | None" = None,
     ) -> RefinementResult:
         """
         Run the refinement optimization.
@@ -148,6 +150,24 @@ class IntegrativeRefiner:
                 rule) fires first terminates the run.  The result fields
                 ``stopped_at_epoch`` and ``early_stopping_triggered_by``
                 record which rule fired and at which epoch.
+            per_epoch_callbacks: Optional list of callables invoked **before
+                each gradient step** with signature
+                ``(epoch: int, params: Any, coords: jnp.ndarray) -> None``.
+                Use this to perform operations that must run outside the
+                gradient tape every epoch, such as periodically re-fitting a
+                Saupe tensor via
+                :meth:`~diff_integrator.terms.nmr.FixedTensorRDCLoss.maybe_update_tensor`::
+
+                    result = refiner.run(
+                        ...,
+                        per_epoch_callbacks=[
+                            lambda epoch, p, c: rdc_term.maybe_update_tensor(c, epoch)
+                        ],
+                    )
+
+                Coords are computed from ``params`` via ``kinematics_fn``
+                once per epoch when callbacks are present; this incurs one
+                extra forward pass per epoch regardless of ``log_interval``.
 
         Returns:
             A :class:`RefinementResult` with all tracked data.
@@ -211,6 +231,7 @@ class IntegrativeRefiner:
 
         loss_history: list[float] = []
         per_term_history: dict[str, list[float]] = {}
+        per_term_epochs: list[int] = []
         validation_history: list[float] = []
         weight_history: dict[int, list[float]] = {
             idx: [] for idx in (weight_schedules or {})
@@ -236,6 +257,17 @@ class IntegrativeRefiner:
             _es_configs = [early_stopping]
         else:
             _es_configs = list(early_stopping)
+
+        # Validate term indices early so callers get a clear error before
+        # any computation begins rather than an IndexError mid-run.
+        n_terms = len(self.loss_fn.terms)
+        for _cfg in _es_configs:
+            if _cfg.term_index < 0 or _cfg.term_index >= n_terms:
+                raise IndexError(
+                    f"EarlyStopping.term_index={_cfg.term_index} is out of range "
+                    f"for a JointLoss with {n_terms} term(s)."
+                )
+
         # Per-config patience counters and best-value trackers.
         # We track best_value in the natural direction (lower is better for
         # mode="min"; higher for mode="max").
@@ -253,6 +285,15 @@ class IntegrativeRefiner:
                     self.loss_fn.set_weight(term_idx, new_weight)
                     weight_history[term_idx].append(new_weight)
 
+            # Per-epoch callbacks (e.g. tensor re-fitting) — before gradient step.
+            # Coords are computed from current params here so that callbacks such
+            # as FixedTensorRDCLoss.maybe_update_tensor receive up-to-date
+            # geometry without requiring a separate external loop.
+            if per_epoch_callbacks:
+                _cb_coords = kinematics_fn(params)
+                for _cb in per_epoch_callbacks:
+                    _cb(epoch, params, _cb_coords)
+
             current_weights = jnp.array([w for _, w in self.loss_fn.terms])
             params, opt_state, loss_val = step(params, opt_state, current_weights)
             current_loss = float(loss_val)
@@ -269,6 +310,7 @@ class IntegrativeRefiner:
                     if name not in per_term_history:
                         per_term_history[name] = []
                     per_term_history[name].append(value)
+                per_term_epochs.append(epoch)
 
             # Validation loss (outside JIT)
             if validation_loss is not None:
@@ -340,6 +382,7 @@ class IntegrativeRefiner:
             final_params=params,
             loss_history=loss_history,
             per_term_history=per_term_history,
+            per_term_epochs=per_term_epochs,
             validation_history=validation_history,
             weight_history=weight_history,
             best_params=best_params,
