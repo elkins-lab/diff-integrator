@@ -240,3 +240,149 @@ shift_term = CartesianCAShiftLoss(
     struct_res_names=residue_names,
 )
 ```
+
+---
+
+## Cα Chirality Penalty
+
+### `ChiralityPenalty`
+
+`diff_integrator.terms.chirality.ChiralityPenalty`
+
+A `LossTerm` that prevents silent L→D Cα inversion during Cartesian refinement.
+Bond-length and bond-angle penalties are chirality-blind: they cannot distinguish an
+L-amino acid from its D-mirror image.  Under large chemical-shift gradients a Cα can
+drift past the L→D boundary without triggering any existing penalty — a structurally
+catastrophic and silent failure mode.
+
+`ChiralityPenalty` uses the signed scalar triple product as a chirality indicator:
+
+$$\chi_i = \left(\vec{N}_i - \vec{CA}_i\right) \times \left(\vec{C}_i - \vec{CA}_i\right) \cdot \left(\vec{C}_{i-1} - \vec{CA}_i\right)$$
+
+For all L-amino acids, $\chi_i < 0$.  A half-harmonic penalty fires when
+$\chi_i \geq -\delta$ (margin $\delta$):
+
+$$\mathcal{L}_\text{chiral} = \frac{1}{M} \sum_{i=1}^{M} \left[\max\!\left(0,\, \chi_i + \delta\right)\right]^2$$
+
+The sign convention was verified empirically across 2KZV, GmR58A, and HR2876B
+(>250 residues), matching the REFMAC/PHENIX convention.
+
+**Constructor**
+
+```python
+ChiralityPenalty(
+    ca_indices:    jnp.ndarray,   # (M,) Cα atom indices
+    n_indices:     jnp.ndarray,   # (M,) N  atom indices (same residue as CA)
+    c_indices:     jnp.ndarray,   # (M,) C  atom indices (same residue as CA)
+    cprev_indices: jnp.ndarray,   # (M,) C  atom indices (preceding residue)
+    margin:        float = 0.1,   # Å³ — safety margin
+)
+```
+
+**`name`** attribute: `"chirality"`
+
+**Methods**
+
+#### `count_violations(coords) → int`
+
+Number of Cα centers with $\chi_i \geq 0$ — a true L→D inversion.  Pure diagnostic.
+
+#### `chi_values(coords) → jnp.ndarray`
+
+Returns the `(M,)` array of raw $\chi$ values for every monitored Cα.
+Useful for identifying which specific residues are near inversion.
+
+**Property**
+
+#### `n_centers → int`
+
+Number of monitored Cα centers.
+
+---
+
+### `make_backbone_chirality`
+
+`diff_integrator.terms.chirality.make_backbone_chirality`
+
+Factory that builds a `ChiralityPenalty` for the standard N–CA–C backbone layout:
+
+```
+atom_index = 3 * residue_index + {0: N,  1: CA,  2: C}
+```
+
+Covers all *interior* residues (1 through `n_residues − 1`).  The N-terminal residue
+(no C_{i-1}) is excluded — same convention as REFMAC and PHENIX.
+
+**Signature**
+
+```python
+make_backbone_chirality(
+    n_residues: int,
+    margin:     float = 0.1,
+) -> ChiralityPenalty
+```
+
+**Example**
+
+```python
+from diff_integrator.terms.chirality import make_backbone_chirality
+
+chirality_pen = make_backbone_chirality(n_residues=92)
+
+joint_loss = JointLoss([
+    (anchor,        5.0),
+    (bond_pen,     50.0),
+    (angle_pen,    10.0),
+    (chirality_pen, 20.0),   # always on — prevents L→D flips
+    (rdc_term,      1.0),
+])
+```
+
+---
+
+## Multi-Phase Refinement — `JointLoss.freeze_term`
+
+### `freeze_term` / `unfreeze_term` / `is_frozen`
+
+`diff_integrator.loss.JointLoss`
+
+Three methods that support multi-phase refinement workflows (e.g., "geometry only for
+200 epochs, then add experimental terms") without rebuilding the `JointLoss` object:
+
+| Method | Signature | Description |
+|---|---|---|
+| `freeze_term` | `(term_index: int) → None` | Exclude term from the gradient objective.  Raises `IndexError` if out of range. |
+| `unfreeze_term` | `(term_index: int) → None` | Re-enable a previously frozen term.  No-op if not frozen. |
+| `is_frozen` | `(term_index: int) → bool` | Query whether a term is currently frozen. |
+
+Frozen terms are **still evaluated** in `evaluate_terms()` and appear in its output
+dict with a `(frozen)` suffix so they can be monitored throughout refinement.
+`IntegrativeRefiner` automatically passes `weight=0.0` for frozen terms in the
+JIT-compiled step function — no recompilation is needed between phases.
+
+**Example**
+
+```python
+joint_loss = JointLoss([
+    (bond_pen,      50.0),   # 0
+    (angle_pen,     10.0),   # 1
+    (chirality_pen, 20.0),   # 2 — chirality guard, always active
+    (rdc_term,       1.0),   # 3
+    (noe_term,       5.0),   # 4
+])
+
+# Phase 1: geometry + chirality only
+joint_loss.freeze_term(3)
+joint_loss.freeze_term(4)
+result_p1 = refiner.run(init_params=starting_coords, epochs=200)
+
+# check monitoring output even for frozen terms
+diag = joint_loss.evaluate_terms(result_p1.final_params, coords)
+# → {"bond_length": ..., "bond_angle": ..., "chirality": ...,
+#    "rdc(frozen)": ..., "noe(frozen)": ...}
+
+# Phase 2: all terms active
+joint_loss.unfreeze_term(3)
+joint_loss.unfreeze_term(4)
+result = refiner.run(init_params=result_p1.final_params, epochs=1000)
+```

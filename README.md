@@ -56,6 +56,8 @@ An abstract base class for defining differentiable constraints. All terms implem
 *   **`CartesianCAShiftLoss`**: Cartesian-space variant that extracts φ/ψ on-the-fly from raw coordinates via `compute_phi_psi`, enabling chemical shift refinement without a NeRF builder.
 *   **`BondLengthPenalty` / `BondAnglePenalty`**: Harmonic restraints on backbone bond lengths and angles to Engh & Huber ideal values. Used in Cartesian refinement to replace the hard geometric constraints of the NeRF builder.
 *   **`RamachandranLoss`**: Sequence-aware Ramachandran prior with residue-specific Gaussian wells. Handles GLY ε-basin (φ > 0) and PRO ring constraint correctly.
+*   **`NOELoss`**: Flat-bottomed harmonic NOE distance restraints (standard XPLOR/CNS convention). Accepts `atom_pairs`, `d_upper`, and optional `d_lower` arrays; reports `count_violations()` and `rms_violation()` diagnostics. Use `make_noe_restraints()` to map `(res_id, atom_name)` pairs directly to atom indices.
+*   **`ChiralityPenalty`**: Half-harmonic Cα chirality guard for Cartesian refinement. Prevents silent L→D inversion during gradient descent using the signed scalar triple product `chi = dot(cross(N−CA, C−CA), C_prev−CA)`. Use `make_backbone_chirality(n_residues)` for the standard N–CA–C layout.
 
 ---
 
@@ -110,6 +112,38 @@ print(f"Stopped early:   {result.stopped_early} ({result.early_stopping_triggere
 refined_coords = result.best_params
 ```
 
+### Multi-phase refinement with `freeze_term`
+
+Freeze experimental terms for an initial geometry-only phase, then thaw them for
+full joint refinement — without rebuilding the loss:
+
+```python
+from diff_integrator.terms.chirality import make_backbone_chirality
+from diff_integrator.terms.noe import make_noe_restraints
+
+chirality_pen = make_backbone_chirality(n_residues)
+noe_term      = make_noe_restraints(noe_observations, struct_res_ids)
+
+joint_loss = JointLoss([
+    (geom_term,      5.0),   # 0 — position anchor
+    (bond_pen,      50.0),   # 1 — bond lengths
+    (angle_pen,     10.0),   # 2 — bond angles
+    (chirality_pen, 20.0),   # 3 — chirality guard (always on)
+    (rdc_term,  rdc_weight), # 4 — RDC
+    (noe_term,       5.0),   # 5 — NOE
+])
+
+# Phase 1: geometry + chirality only
+joint_loss.freeze_term(4)   # freeze RDC
+joint_loss.freeze_term(5)   # freeze NOE
+result_p1 = refiner.run(init_params=starting_coords, epochs=200)
+
+# Phase 2: add experimental restraints
+joint_loss.unfreeze_term(4)
+joint_loss.unfreeze_term(5)
+result = refiner.run(init_params=result_p1.final_params, epochs=1000)
+```
+
 ---
 
 ## 🔬 Scientific Validation
@@ -130,8 +164,11 @@ diff-integrator/
 │   ├── optimizer.py       # IntegrativeRefiner engine
 │   └── terms/             # Concrete loss implementations
 │       ├── geometry.py    # Harmonic restraints, RMSD
+│       ├── bond_geometry.py # Cartesian bond/angle penalties (Engh & Huber)
+│       ├── chirality.py   # Cα chirality penalty (L→D inversion guard)
 │       ├── saxs.py        # Debye scattering loss
 │       ├── nmr.py         # RDC and Q-factor loss
+│       ├── noe.py         # NOE flat-bottomed distance restraints
 │       └── chemical_shifts.py # C-alpha shift loss
 ├── benchmarks/            # Real-world optimization tests
 ├── tests/                 # Unit tests (100% coverage)

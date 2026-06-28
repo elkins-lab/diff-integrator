@@ -279,3 +279,120 @@ result = refiner.run(
 print(f"Stopped at epoch {result.best_epoch} / 2000")
 print(f"Triggered by term {result.early_stopping_triggered_by}")
 ```
+
+---
+
+## NOE Distance Restraints
+
+### `NOELoss`
+
+`diff_integrator.terms.noe.NOELoss`
+
+A `LossTerm` implementing the standard flat-bottomed harmonic NOE (Nuclear Overhauser
+Effect) distance restraint used in XPLOR, CNS, and ARIA.  The energy is zero when a
+distance is within bounds and grows quadratically once a bound is violated:
+
+$$E(d) = \frac{k}{M} \sum_{m=1}^{M} \left[ \max(0,\, d_m - d_m^{\text{upper}})^2 + \max(0,\, d_m^{\text{lower}} - d_m)^2 \right]$$
+
+where $M$ is the number of restraints and $k$ is `force_const`.  A mean (not sum) is
+used so the weight has a consistent interpretation across datasets of different sizes.
+
+**Constructor**
+
+```python
+NOELoss(
+    atom_pairs:  jnp.ndarray,             # (M, 2) integer atom index pairs
+    d_upper:     jnp.ndarray,             # (M,)  upper-bound distances in Å
+    d_lower:     jnp.ndarray | None = None,  # (M,) optional lower bounds
+    force_const: float = 1.0,
+)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `atom_pairs` | `(M, 2) int` | Each row `[i, j]` defines one restraint between atoms `i` and `j` |
+| `d_upper` | `(M,) float` | Upper-bound distances in Å — penalty fires when `d > d_upper` |
+| `d_lower` | `(M,) float \| None` | Lower-bound distances in Å — penalty fires when `d < d_lower`.  `None` (default) means upper-bound only, which is the standard NMR convention |
+| `force_const` | `float` | Harmonic force constant.  Default `1.0`.  Typical values: `5`–`50` |
+
+**`name`** attribute: `"noe"`
+
+**Methods**
+
+#### `count_violations(coords) → dict[str, int]`
+
+Returns `{"upper": n, "lower": n, "total": n}` — count of atoms violating each bound.
+Pure diagnostic; not used in the gradient.
+
+#### `rms_violation(coords) → float`
+
+Root-mean-square distance violation across all restraints, in Å.
+
+**Property**
+
+#### `n_restraints → int`
+
+Number of distance restraints.
+
+**Example**
+
+```python
+from diff_integrator.terms.noe import NOELoss
+
+noe_loss = NOELoss(
+    atom_pairs  = jnp.array([[4, 31], [7, 52]]),   # Cα pairs
+    d_upper     = jnp.array([6.0, 4.5]),            # Å
+    d_lower     = jnp.array([1.8, 1.8]),            # Å (optional)
+    force_const = 10.0,
+)
+```
+
+---
+
+### `make_noe_restraints`
+
+`diff_integrator.terms.noe.make_noe_restraints`
+
+Factory that maps `(res_id, atom_name)` observations to flat atom indices using the
+structure's residue ordering, then returns a ready-to-use `NOELoss`.
+
+**Signature**
+
+```python
+make_noe_restraints(
+    noe_list:   list[dict],
+    res_ids:    np.ndarray,
+    atom_names: list[str] | None = None,   # default ["N", "CA", "C"]
+    force_const: float = 1.0,
+) -> NOELoss
+```
+
+Each dict in `noe_list` must contain:
+
+| Key | Type | Description |
+|---|---|---|
+| `"res_i"` | `int` | Residue number of atom i |
+| `"atom_i"` | `str` | Atom name of atom i (e.g. `"CA"`) |
+| `"res_j"` | `int` | Residue number of atom j |
+| `"atom_j"` | `str` | Atom name of atom j |
+| `"d_upper"` | `float` | Upper-bound distance in Å |
+| `"d_lower"` | `float` | *(optional)* Lower-bound distance in Å |
+
+**Example**
+
+```python
+from diff_integrator.terms.noe import make_noe_restraints
+import numpy as np
+
+noe_observations = [
+    {"res_i":  5, "atom_i": "CA", "res_j": 20, "atom_j": "CA",
+     "d_upper": 6.0, "d_lower": 1.8},
+    {"res_i": 12, "atom_i": "N",  "res_j": 45, "atom_j": "CA",
+     "d_upper": 5.5},
+]
+
+noe_term = make_noe_restraints(noe_observations, struct_res_ids)
+violations = noe_term.count_violations(coords)
+print(f"{violations['total']} NOE violations at current coordinates")
+```
+
