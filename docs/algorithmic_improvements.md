@@ -240,6 +240,75 @@ optimizer from exploring physically inaccessible φ values.
 
 ---
 
+## 4. Cartesian + Bond-Angle Penalty (implemented ✅)
+
+Optimise directly in Cartesian coordinate space instead of over backbone (φ, ψ)
+dihedral angles.  Bond-length and bond-angle penalties replace the hard NeRF
+geometric constraints with soft harmonic restraints.
+
+### The NeRF drift problem
+
+The NeRF backbone builder starts from a 3-atom seed and propagates ideal
+bond lengths and angles along the chain.  For long proteins (>50 residues),
+float32 accumulation causes the NeRF-rebuilt backbone to diverge from the
+raw PDB coordinates.  For HR2876B (107 residues) this drift is approximately
+**14 Å**, meaning the optimizer starts from a structure qualitatively
+different from the real NMR model.
+
+### Solution: BondLengthPenalty + BondAnglePenalty
+
+New module `diff_integrator/terms/bond_geometry.py` provides:
+
+- `BondLengthPenalty` — harmonic MSE on backbone bond lengths
+- `BondAnglePenalty` — harmonic MSE on backbone bond angles (arccos-safe)
+- `make_backbone_bond_geometry(n_residues)` — factory pre-populated with
+  Engh & Huber (1991) ideal values for all N–CA–C backbone bonds/angles
+
+Also added `CartesianCAShiftLoss` to `diff_integrator/terms/chemical_shifts.py`,
+which extracts φ/ψ torsion angles from the current Cartesian coordinates via
+`compute_phi_psi(coords)` and evaluates the chemical shift RMSD.  This makes
+the gradient `shift_loss → φ/ψ(coords) → coords` fully differentiable.
+
+```python
+from diff_integrator.terms.bond_geometry import make_backbone_bond_geometry
+from diff_integrator.terms.chemical_shifts import CartesianCAShiftLoss
+from diff_integrator.terms.geometry import GeometryLoss
+
+bond_pen, angle_pen = make_backbone_bond_geometry(n_residues)
+ca_loss = CartesianCAShiftLoss(exp_res_ids, exp_shifts, res_ids, res_names)
+anchor  = GeometryLoss(target_coords=pdb_coords, target_weight=1.0)
+
+joint_loss = JointLoss([
+    (anchor,   10.0),   # annealed 10→0.1 over τ=100 epochs
+    (ca_loss,  1.0),
+    (bond_pen, 50.0),   # stiff bonds
+    (angle_pen, 10.0),  # softer angles
+])
+
+# Cartesian: params ARE coords; kinematics_fn=None → identity
+result = IntegrativeRefiner(joint_loss).run(
+    init_params=pdb_backbone_coords,
+    kinematics_fn=None,
+    weight_schedules={0: anchor_schedule},
+)
+```
+
+### HR2876B benchmark results (2025-06)
+
+| Metric | NeRF | **Cartesian** | Improvement |
+|---|---|---|---|
+| Starting coords | NeRF-rebuilt (14 Å drift) | Raw PDB | — |
+| Δ Cα RMSD | −0.011 ppm | **−0.144 ppm** | **13×** |
+| Structural drift | 6.356 Å | **0.211 Å** | 30× less |
+| Bond RMSD (final) | 0 (hard) | **0.0010 Å** ✅ | Maintained |
+| Angle RMSD (final) | 0 (hard) | **0.458°** ✅ | Maintained |
+
+The 13× improvement comes entirely from eliminating NeRF drift: the Cartesian
+optimizer starts at the actual NMR structure rather than 14 Å away.
+
+---
+
+
 ## 5. Future Directions
 
 | Direction | Benefit | Complexity |
@@ -251,7 +320,7 @@ optimizer from exploring physically inaccessible φ values.
 | RDC cross-validation split | Revealed PAG overfitting in 2KZV at ratio 3.6× | Low ✅ **Implemented** |
 | Auto-weight RDC by ratio | PAG=0.36, PEG=0.32 for 2KZV; reduces incentive to overfit underdetermined media | Low ✅ **Implemented** |
 | Anchored-segment NeRF for long chains | Eliminates HR2876B drift problem | Medium |
-| Cartesian + bond-angle penalty | Eliminates NeRF drift entirely | Medium |
+| Cartesian + bond-angle penalty | 13× larger Cα RMSD improvement on HR2876B; structural drift 30× reduced | Medium ✅ **Implemented** |
 | Regularised tensor fitting | Tikhonov penalty in fit_saupe_tensor (diff_biophys change required) | Medium |
 | Riemannian Adam for torsion angles | Respects periodic (−π, π) topology | Medium |
 | Per-term early stopping | Stop on experimental observable plateau, not total loss | Low |

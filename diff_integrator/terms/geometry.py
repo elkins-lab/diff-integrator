@@ -9,6 +9,16 @@ class GeometryLoss(LossTerm):
     """
     Computes a loss penalty for geometric violations like extreme bond lengths
     or atomic clashes.
+
+    .. note::
+        This class provides a **position-anchor** restraint (``target_coords``)
+        and optional bond-length / clash checks.  For the full Cartesian
+        refinement workflow (optimising directly in Cartesian space instead of
+        using NeRF dihedral angles), see
+        :mod:`diff_integrator.terms.bond_geometry`, which provides
+        ``BondLengthPenalty``, ``BondAnglePenalty``, and the
+        ``make_backbone_bond_geometry`` factory pre-populated with Engh & Huber
+        ideal values.
     """
 
     def __init__(
