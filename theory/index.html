@@ -1,0 +1,3332 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Differentiable biophysical modeling in JAX">
+      
+      
+        <meta name="author" content="George Elkins">
+      
+      
+        <link rel="canonical" href="https://elkins-lab.github.io/diff-integrator/theory/">
+      
+      
+        <link rel="prev" href="../use_cases/">
+      
+      
+        <link rel="next" href="../api/loss/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Core Theory - DiffIntegrator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#theory-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DiffIntegrator" class="md-header__button md-logo" aria-label="DiffIntegrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DiffIntegrator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Core Theory
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts & Context
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../use_cases/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Use Cases
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Core Theory
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/loss/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/01_hello_gradient_descent.ipynb" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/refinement/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DiffIntegrator" class="md-nav__button md-logo" aria-label="DiffIntegrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DiffIntegrator
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use_cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Theory
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Theory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-natural-extension-reference-frame-nerf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Natural Extension Reference Frame (NeRF)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Natural Extension Reference Frame (NeRF)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-nerf-recurrence-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The NeRF Recurrence Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-nerf-is-differentiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why NeRF is Differentiable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-small-angle-x-ray-scattering-saxs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Small-Angle X-ray Scattering (SAXS)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Small-Angle X-ray Scattering (SAXS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-debye-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Debye Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guinier-approximation-and-radius-of-gyration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guinier Approximation and Radius of Gyration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hydration-shell-and-excluded-volume-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hydration Shell and Excluded-Volume Correction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-kratky-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Kratky Plot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pair-distance-distribution-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pair-Distance Distribution P(r)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-nmr-karplus-j-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. NMR: Karplus J-Coupling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. NMR: Karplus J-Coupling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-karplus-equation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Karplus Equation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-to-the-backbone-dihedral-phi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection to the Backbone Dihedral \(\phi\)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-nmr-chemical-shifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. NMR: Chemical Shifts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. NMR: Chemical Shifts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-values-and-secondary-shifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Values and Secondary Shifts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#softmax-weighted-gaussian-detector-in-phi-psi-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Softmax-Weighted Gaussian Detector in \((\phi, \psi)\) Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-nmr-residual-dipolar-couplings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. NMR: Residual Dipolar Couplings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. NMR: Residual Dipolar Couplings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-saupe-alignment-tensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Saupe Alignment Tensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dipolar-coupling-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Dipolar Coupling Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-magic-angle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Magic Angle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#svd-based-tensor-fitting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SVD-Based Tensor Fitting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-nmr-ring-current-shifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. NMR: Ring Current Shifts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. NMR: Ring Current Shifts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#johnson-bovey-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Johnson-Bovey Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#distance-dependence-and-gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distance Dependence and Gradient
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-circular-dichroism-cd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Circular Dichroism (CD)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Circular Dichroism (CD)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transition-dipole-moments-and-amide-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transition Dipole Moments and Amide Transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#devoe-coupled-oscillator-matrix-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeVoe Coupled-Oscillator / Matrix Method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-helices-and-sheets-differ" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Helices and Sheets Differ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-cryo-em-fourier-shell-correlation-fsc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Cryo-EM: Fourier Shell Correlation (FSC)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Cryo-EM: Fourier Shell Correlation (FSC)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-fsc-as-a-function-of-spatial-frequency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The FSC as a Function of Spatial Frequency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-0143-gold-standard-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The 0.143 Gold-Standard Threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differentiability-with-respect-to-the-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiability with Respect to the Map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-kabsch-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Kabsch Alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Kabsch Alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rmsd-minimisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RMSD Minimisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#svd-based-optimal-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SVD-Based Optimal Rotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differentiability-through-svd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiability Through SVD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-radius-of-gyration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Radius of Gyration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Radius of Gyration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Definition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mass-weighted-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mass-Weighted Version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaling-laws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaling Laws
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-as-a-compaction-restraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use as a Compaction Restraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/loss/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loss & Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/optimizer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/schedules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/saxs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAXS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/nmr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NMR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/cd_and_cryoem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CD & Cryo-EM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/01_hello_gradient_descent.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 · Hello, Gradient Descent!
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/02_nmr_fundamentals.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 · NMR Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/03_cd_spectroscopy.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 · CD Spectroscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/refinement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refinement Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-natural-extension-reference-frame-nerf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Natural Extension Reference Frame (NeRF)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Natural Extension Reference Frame (NeRF)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-nerf-recurrence-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The NeRF Recurrence Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-nerf-is-differentiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why NeRF is Differentiable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-small-angle-x-ray-scattering-saxs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Small-Angle X-ray Scattering (SAXS)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Small-Angle X-ray Scattering (SAXS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-debye-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Debye Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guinier-approximation-and-radius-of-gyration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guinier Approximation and Radius of Gyration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hydration-shell-and-excluded-volume-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hydration Shell and Excluded-Volume Correction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-kratky-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Kratky Plot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pair-distance-distribution-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pair-Distance Distribution P(r)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-nmr-karplus-j-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. NMR: Karplus J-Coupling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. NMR: Karplus J-Coupling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-karplus-equation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Karplus Equation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-to-the-backbone-dihedral-phi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection to the Backbone Dihedral \(\phi\)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-nmr-chemical-shifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. NMR: Chemical Shifts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. NMR: Chemical Shifts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-values-and-secondary-shifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Values and Secondary Shifts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#softmax-weighted-gaussian-detector-in-phi-psi-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Softmax-Weighted Gaussian Detector in \((\phi, \psi)\) Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-nmr-residual-dipolar-couplings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. NMR: Residual Dipolar Couplings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. NMR: Residual Dipolar Couplings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-saupe-alignment-tensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Saupe Alignment Tensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dipolar-coupling-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Dipolar Coupling Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-magic-angle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Magic Angle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#svd-based-tensor-fitting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SVD-Based Tensor Fitting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-nmr-ring-current-shifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. NMR: Ring Current Shifts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. NMR: Ring Current Shifts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#johnson-bovey-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Johnson-Bovey Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#distance-dependence-and-gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distance Dependence and Gradient
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-circular-dichroism-cd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Circular Dichroism (CD)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Circular Dichroism (CD)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transition-dipole-moments-and-amide-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transition Dipole Moments and Amide Transitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#devoe-coupled-oscillator-matrix-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeVoe Coupled-Oscillator / Matrix Method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-helices-and-sheets-differ" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Helices and Sheets Differ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-cryo-em-fourier-shell-correlation-fsc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Cryo-EM: Fourier Shell Correlation (FSC)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Cryo-EM: Fourier Shell Correlation (FSC)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-fsc-as-a-function-of-spatial-frequency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The FSC as a Function of Spatial Frequency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-0143-gold-standard-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The 0.143 Gold-Standard Threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differentiability-with-respect-to-the-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiability with Respect to the Map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-kabsch-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Kabsch Alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Kabsch Alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rmsd-minimisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RMSD Minimisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#svd-based-optimal-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SVD-Based Optimal Rotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differentiability-through-svd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differentiability Through SVD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-interpretation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient Interpretation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-radius-of-gyration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Radius of Gyration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Radius of Gyration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#physical-intuition_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Intuition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Definition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mass-weighted-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mass-Weighted Version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaling-laws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaling Laws
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-as-a-compaction-restraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use as a Compaction Restraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="theory-reference">Theory Reference</h1>
+<p>This page develops the mathematical and physical foundations underlying every forward model
+implemented in <strong>diff-biophys</strong>. Sections progress from physical intuition → governing
+equations → differentiability and gradient interpretation. All math is written in the
+convention used by the code; deviations from common textbook notation are flagged
+explicitly.</p>
+<blockquote>
+<p>[!NOTE]
+Throughout this document, atom positions are three-dimensional column vectors
+<span class="arithmatex">\(\mathbf{r}_i \in \mathbb{R}^3\)</span>. Bold lower-case letters are vectors; bold upper-case
+letters are matrices. Greek letters denote angles unless otherwise stated.</p>
+</blockquote>
+<hr />
+<h2 id="1-natural-extension-reference-frame-nerf">1. Natural Extension Reference Frame (NeRF)</h2>
+<h3 id="physical-intuition">Physical Intuition</h3>
+<p>Protein structure can be specified in two complementary coordinate systems.
+<strong>Cartesian coordinates</strong> place every atom at an absolute position <span class="arithmatex">\((x,y,z)\)</span> in space —
+convenient for computing distances and energies, but highly redundant: a rigid-body rotation
+or translation of the whole chain changes every coordinate without changing the
+<em>shape</em> of the molecule. <strong>Internal coordinates</strong> instead describe the chain geometry
+through physically meaningful local quantities that are invariant to global rotation and
+translation:</p>
+<ul>
+<li><strong>Bond length</strong> <span class="arithmatex">\(b_i\)</span> — the distance between bonded atoms <span class="arithmatex">\(i-1\)</span> and <span class="arithmatex">\(i\)</span>.</li>
+<li><strong>Bond angle</strong> <span class="arithmatex">\(\theta_i\)</span> — the angle at atom <span class="arithmatex">\(i-1\)</span> subtended by the <span class="arithmatex">\(i-2 \to i-1 \to i\)</span>
+  triple (equivalently, the supplement of the angle between successive bond vectors).</li>
+<li><strong>Dihedral (torsion) angle</strong> <span class="arithmatex">\(\phi_i\)</span> — the angle of rotation about the <span class="arithmatex">\(i-2 \to i-1\)</span>
+  bond axis, measured between the plane containing <span class="arithmatex">\(i-3, i-2, i-1\)</span> and the plane containing
+  <span class="arithmatex">\(i-2, i-1, i\)</span>. This is the quantity optimised during conformation search.</li>
+</ul>
+<p>The <strong>Natural Extension Reference Frame (NeRF)</strong> algorithm, introduced by Parsons <em>et al.</em>
+(2005), converts internal coordinates back to Cartesian space via a closed-form recurrence.
+This is exactly what is needed for a differentiable structure generator: pass dihedral angles
+through NeRF → get atom positions → evaluate any experimental observable.</p>
+<h3 id="the-nerf-recurrence-formula">The NeRF Recurrence Formula</h3>
+<p>Given three already-placed atoms <span class="arithmatex">\(\mathbf{r}_{i-3}\)</span>, <span class="arithmatex">\(\mathbf{r}_{i-2}\)</span>, <span class="arithmatex">\(\mathbf{r}_{i-1}\)</span>
+and the internal coordinates <span class="arithmatex">\((b_i, \theta_i, \phi_i)\)</span> for the new atom <span class="arithmatex">\(i\)</span>, NeRF proceeds
+as follows.</p>
+<p><strong>Step 1 — Build the local right-handed frame.</strong></p>
+<div class="arithmatex">\[
+\hat{\mathbf{d}} = \frac{\mathbf{r}_{i-1} - \mathbf{r}_{i-2}}{\|\mathbf{r}_{i-1} - \mathbf{r}_{i-2}\|}
+\]</div>
+<div class="arithmatex">\[
+\hat{\mathbf{n}} = \frac{(\mathbf{r}_{i-2} - \mathbf{r}_{i-3}) \times \hat{\mathbf{d}}}{\|(\mathbf{r}_{i-2} - \mathbf{r}_{i-3}) \times \hat{\mathbf{d}}\|}
+\]</div>
+<div class="arithmatex">\[
+\hat{\mathbf{m}} = \hat{\mathbf{n}} \times \hat{\mathbf{d}}
+\]</div>
+<p>The triad <span class="arithmatex">\(\{\hat{\mathbf{d}}, \hat{\mathbf{n}}, \hat{\mathbf{m}}\}\)</span> is an orthonormal basis
+anchored at <span class="arithmatex">\(\mathbf{r}_{i-1}\)</span>. The vector <span class="arithmatex">\(\hat{\mathbf{d}}\)</span> points along the most recent
+bond direction; <span class="arithmatex">\(\hat{\mathbf{n}}\)</span> is the normal to the plane of the last three atoms;
+<span class="arithmatex">\(\hat{\mathbf{m}}\)</span> completes the right-handed set.</p>
+<p><strong>Step 2 — Express the new atom in local coordinates.</strong></p>
+<p>In the local frame the new atom lies at bond length <span class="arithmatex">\(b_i\)</span> from <span class="arithmatex">\(\mathbf{r}_{i-1}\)</span>, deflected
+by the supplement of bond angle <span class="arithmatex">\(\theta_i\)</span> away from <span class="arithmatex">\(\hat{\mathbf{d}}\)</span>, and rotated by
+dihedral <span class="arithmatex">\(\phi_i\)</span> about <span class="arithmatex">\(\hat{\mathbf{d}}\)</span>:</p>
+<div class="arithmatex">\[
+\mathbf{r}_i^{\,\mathrm{local}} = b_i \begin{pmatrix} -\cos\theta_i \\ \sin\theta_i \cos\phi_i \\ \sin\theta_i \sin\phi_i \end{pmatrix}
+\]</div>
+<p><strong>Step 3 — Rotate back to global Cartesian space.</strong></p>
+<div class="arithmatex">\[
+\boxed{\mathbf{r}_i = \mathbf{r}_{i-1} + b_i\bigl[-\cos\theta_i\,\hat{\mathbf{d}} + \sin\theta_i\cos\phi_i\,\hat{\mathbf{m}} + \sin\theta_i\sin\phi_i\,\hat{\mathbf{n}}\bigr]}
+\]</div>
+<p>This is the NeRF recurrence. Each atom depends only on its three predecessors and its own
+internal coordinates. The chain is built atom-by-atom from N-terminus to C-terminus.</p>
+<h3 id="why-nerf-is-differentiable">Why NeRF is Differentiable</h3>
+<p>Every operation above — cross products, normalisation, trigonometric functions — is smooth
+and composed of elementary arithmetic. JAX traces through the computation graph automatically
+using forward or reverse-mode automatic differentiation. The critical subtlety is the
+cross-product normalisation: it introduces a <span class="arithmatex">\(1/\|\cdot\|\)</span> factor that can be numerically
+problematic when three atoms become nearly co-linear (i.e., the bond angle approaches
+<span class="arithmatex">\(0°\)</span> or <span class="arithmatex">\(180°\)</span>). In diff-biophys, bond angles are constrained away from these singularities
+during optimisation.</p>
+<blockquote>
+<p>[!IMPORTANT]
+The gradient <span class="arithmatex">\(\partial \mathbf{r}_i / \partial \phi_j\)</span> is <strong>non-zero for all</strong> <span class="arithmatex">\(i &gt; j\)</span>
+because a rotation about bond <span class="arithmatex">\(j\)</span> rigidly moves every downstream atom. This long-range
+dependency is why torsion-space optimisation of proteins is non-trivial but is also why
+dihedral gradients encode rich structural information.</p>
+</blockquote>
+<h3 id="gradient-interpretation">Gradient Interpretation</h3>
+<p>The gradient of any downstream loss <span class="arithmatex">\(\mathcal{L}\)</span> with respect to a dihedral <span class="arithmatex">\(\phi_j\)</span>
+aggregates contributions from all atoms <span class="arithmatex">\(i &gt; j\)</span>:</p>
+<div class="arithmatex">\[
+\frac{\partial \mathcal{L}}{\partial \phi_j} = \sum_{i&gt;j} \frac{\partial \mathcal{L}}{\partial \mathbf{r}_i} \cdot \frac{\partial \mathbf{r}_i}{\partial \phi_j}
+\]</div>
+<p>A large <span class="arithmatex">\(|\partial \mathcal{L}/\partial \phi_j|\)</span> means that rotating about bond <span class="arithmatex">\(j\)</span> would
+most efficiently reduce the experimental discrepancy — directly identifying the flexible
+region the structure needs to adjust.</p>
+<hr />
+<h2 id="2-small-angle-x-ray-scattering-saxs">2. Small-Angle X-ray Scattering (SAXS)</h2>
+<h3 id="physical-intuition_1">Physical Intuition</h3>
+<p>When a monochromatic X-ray beam of wavelength <span class="arithmatex">\(\lambda\)</span> illuminates a solution of identical
+molecules, the electrons in each molecule scatter the photons. At small angles (typically
+<span class="arithmatex">\(2\theta &lt; 5°\)</span>), the scattered waves from different parts of the <em>same</em> molecule interfere
+constructively and destructively depending on the inter-atomic distances. The resulting
+intensity profile <span class="arithmatex">\(I(q)\)</span> — recorded on a detector as a function of the <strong>momentum transfer</strong>
+<span class="arithmatex">\(q\)</span> — encodes the overall shape and size of the molecule without requiring crystals.</p>
+<div class="arithmatex">\[
+q = \frac{4\pi \sin\theta}{\lambda} \quad [\text{Å}^{-1}]
+\]</div>
+<p>Here <span class="arithmatex">\(2\theta\)</span> is the scattering angle. The quantity <span class="arithmatex">\(2\pi/q\)</span> is the length scale being
+probed: small <span class="arithmatex">\(q\)</span> corresponds to large-scale (global) structure; large <span class="arithmatex">\(q\)</span> resolves finer
+detail.</p>
+<h3 id="the-debye-formula">The Debye Formula</h3>
+<p>For a molecule with <span class="arithmatex">\(N\)</span> atoms at positions <span class="arithmatex">\(\{\mathbf{r}_i\}\)</span>, each with <strong>atomic form
+factor</strong> <span class="arithmatex">\(f_i(q)\)</span> (the Fourier transform of its electron density), the solution-averaged
+scattering intensity is exactly:</p>
+<div class="arithmatex">\[
+\boxed{I(q) = \sum_{i=1}^{N}\sum_{j=1}^{N} f_i(q)\, f_j(q)\, \frac{\sin(q r_{ij})}{q r_{ij}}}
+\]</div>
+<p>where <span class="arithmatex">\(r_{ij} = |\mathbf{r}_i - \mathbf{r}_j|\)</span> is the inter-atomic distance. The
+<span class="arithmatex">\(\sin(x)/x\)</span> (sinc) kernel arises from averaging the complex exponential <span class="arithmatex">\(e^{i\mathbf{q}\cdot\mathbf{r}_{ij}}\)</span>
+over all orientations of the molecule.</p>
+<p>Atomic form factors are tabulated as sums of Gaussians (Waasmaier &amp; Kirfel 1995):</p>
+<div class="arithmatex">\[
+f(q) = \sum_{k=1}^{4} a_k \exp\!\left(-b_k \left(\frac{q}{4\pi}\right)^2\right) + c
+\]</div>
+<p>The form factor decreases monotonically with <span class="arithmatex">\(q\)</span>, reflecting the finite spatial extent of
+electron density around each nucleus.</p>
+<blockquote>
+<p>[!NOTE]
+The Debye formula has <span class="arithmatex">\(O(N^2)\)</span> complexity. For a 200-residue protein (<span class="arithmatex">\(\approx\)</span>1600 atoms),
+this means ~2.6 million pair distances per <span class="arithmatex">\(q\)</span> point. diff-biophys uses JAX <code>vmap</code> and
+GPU acceleration to make this tractable. For very large assemblies, a histogram
+approximation is optionally substituted.</p>
+</blockquote>
+<h3 id="guinier-approximation-and-radius-of-gyration">Guinier Approximation and Radius of Gyration</h3>
+<p>At very small <span class="arithmatex">\(q\)</span> (<span class="arithmatex">\(q R_g \ll 1\)</span>, typically <span class="arithmatex">\(q &lt; 1.3/R_g\)</span>), the intensity simplifies to
+the <strong>Guinier approximation</strong>:</p>
+<div class="arithmatex">\[
+\boxed{I(q) \approx I_0 \exp\!\left(-\frac{q^2 R_g^2}{3}\right)}
+\]</div>
+<p>where <span class="arithmatex">\(I_0 = I(0)\)</span> is the forward scattering intensity and <span class="arithmatex">\(R_g\)</span> is the <strong>radius of
+gyration</strong> (Section 10). A plot of <span class="arithmatex">\(\ln I(q)\)</span> versus <span class="arithmatex">\(q^2\)</span> (the Guinier plot) is linear in
+the valid range; the slope gives <span class="arithmatex">\(-R_g^2/3\)</span>. This provides a rapid, model-independent
+estimate of molecular size directly from raw data.</p>
+<h3 id="hydration-shell-and-excluded-volume-correction">Hydration Shell and Excluded-Volume Correction</h3>
+<p>Real SAXS measurements are performed in aqueous solution. The protein does two things to
+the bulk solvent: it <strong>excludes</strong> water from its interior (reducing the effective scattering
+density of that region) and it <strong>orders</strong> water molecules at its surface into a hydration
+shell with higher electron density than bulk. The net scattering amplitude is:</p>
+<div class="arithmatex">\[
+F(\mathbf{q}) = F_{\mathrm{protein}}(\mathbf{q}) - \rho_0\, F_{\mathrm{excluded}}(\mathbf{q}) + \delta\rho\, F_{\mathrm{shell}}(\mathbf{q})
+\]</div>
+<p>Following Fraser <em>et al.</em> (1978), the excluded volume is approximated by assigning each
+atom a Gaussian-distributed excluded volume <span class="arithmatex">\(v_i\)</span> so that:</p>
+<div class="arithmatex">\[
+F_{\mathrm{excluded}}(\mathbf{q}) = \sum_i v_i \exp\!\left(-\frac{v_i^{2/3} q^2}{4\pi}\right) e^{i\mathbf{q}\cdot\mathbf{r}_i}
+\]</div>
+<p>In practice, diff-biophys uses the two-parameter CRYSOL-style correction with amplitude <span class="arithmatex">\(c_1\)</span>
+(excluded volume scale) and <span class="arithmatex">\(c_2\)</span> (shell contrast <span class="arithmatex">\(\delta\rho\)</span>), which are refined
+alongside the structural model.</p>
+<h3 id="the-kratky-plot">The Kratky Plot</h3>
+<p>The <strong>Kratky plot</strong> displays <span class="arithmatex">\(q^2 I(q)\)</span> versus <span class="arithmatex">\(q\)</span>. This transformation dramatically
+amplifies the high-<span class="arithmatex">\(q\)</span> signal and serves as a rapid qualitative diagnostic:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Kratky appearance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Compact globular</td>
+<td>Bell-shaped peak, returns toward zero</td>
+</tr>
+<tr>
+<td>Partially unfolded</td>
+<td>Broad, asymmetric peak</td>
+</tr>
+<tr>
+<td>Intrinsically disordered</td>
+<td>Monotonic rise (plateau or diverges)</td>
+</tr>
+</tbody>
+</table>
+<p>The physical basis is that a Gaussian chain gives <span class="arithmatex">\(I(q) \propto q^{-2}\)</span> at high <span class="arithmatex">\(q\)</span>, so
+<span class="arithmatex">\(q^2 I(q)\)</span> approaches a constant, while a compact sphere gives <span class="arithmatex">\(I(q) \propto q^{-4}\)</span>, so
+<span class="arithmatex">\(q^2 I(q) \propto q^{-2} \to 0\)</span>.</p>
+<h3 id="pair-distance-distribution-pr">Pair-Distance Distribution P(r)</h3>
+<p>The real-space counterpart of <span class="arithmatex">\(I(q)\)</span> is the <strong>pair-distance distribution function</strong>:</p>
+<div class="arithmatex">\[
+P(r) = \frac{r^2}{2\pi^2} \int_0^\infty I(q)\, q^2\, \frac{\sin(qr)}{qr}\, \mathrm{d}q
+\]</div>
+<p><span class="arithmatex">\(P(r)\)</span> is the histogram of all inter-atomic distances weighted by the product of electron
+densities at each pair. It is zero beyond the maximum inter-atomic distance <span class="arithmatex">\(D_{\max}\)</span> of the
+molecule. The shape of <span class="arithmatex">\(P(r)\)</span> is diagnostic: a peak at small <span class="arithmatex">\(r\)</span> with a long tail indicates
+an elongated molecule; a symmetric bell shape indicates a sphere.</p>
+<blockquote>
+<p>[!TIP]
+<span class="arithmatex">\(R_g\)</span> can be extracted directly from <span class="arithmatex">\(P(r)\)</span>: <span class="arithmatex">\(R_g^2 = \frac{\int r^2 P(r)\,\mathrm{d}r}{2\int P(r)\,\mathrm{d}r}\)</span>. This is more robust than the Guinier approximation when the low-<span class="arithmatex">\(q\)</span> region is noisy.</p>
+</blockquote>
+<h3 id="gradient-interpretation_1">Gradient Interpretation</h3>
+<div class="arithmatex">\[
+\frac{\partial I(q)}{\partial \mathbf{r}_k} = 2\sum_{j \neq k} f_k(q)\,f_j(q)\,\frac{\partial}{\partial \mathbf{r}_k}\left[\frac{\sin(q r_{kj})}{q r_{kj}}\right]
+\]</div>
+<div class="arithmatex">\[
+= 2\sum_{j \neq k} f_k f_j \cdot \frac{\cos(q r_{kj}) - \mathrm{sinc}(q r_{kj})}{r_{kj}^2} \cdot (\mathbf{r}_k - \mathbf{r}_j)
+\]</div>
+<p>The gradient <span class="arithmatex">\(\partial I(q)/\partial \mathbf{r}_k\)</span> is a 3-vector pointing in the direction
+that atom <span class="arithmatex">\(k\)</span> should move to most increase <span class="arithmatex">\(I(q)\)</span> at that scattering angle. Atoms far apart
+contribute most to low-<span class="arithmatex">\(q\)</span> gradients; nearby atoms drive high-<span class="arithmatex">\(q\)</span> gradients. A loss based
+on the <span class="arithmatex">\(\chi^2\)</span> discrepancy between predicted and experimental <span class="arithmatex">\(I(q)\)</span> therefore pushes atoms
+to rearrange in a physically interpretable, spatially resolved way.</p>
+<hr />
+<h2 id="3-nmr-karplus-j-coupling">3. NMR: Karplus J-Coupling</h2>
+<h3 id="physical-intuition_2">Physical Intuition</h3>
+<p><strong>Scalar coupling</strong> (J-coupling) is a through-bond interaction between nuclear spins,
+transmitted by the electrons in intervening chemical bonds. The <strong>three-bond</strong> (vicinal)
+coupling <span class="arithmatex">\({}^3J\)</span> depends exquisitely on the dihedral angle <span class="arithmatex">\(\theta\)</span> spanning those three
+bonds. This makes it one of the most direct NMR restraints on backbone and side-chain
+geometry: measure a coupling constant in Hz, read off the torsion angle.</p>
+<h3 id="the-karplus-equation">The Karplus Equation</h3>
+<div class="arithmatex">\[
+\boxed{J(\theta) = A\cos^2\theta + B\cos\theta + C}
+\]</div>
+<p>This empirical relation was derived by Karplus (1959) from valence-bond theory. The parameters
+<span class="arithmatex">\(A\)</span>, <span class="arithmatex">\(B\)</span>, <span class="arithmatex">\(C\)</span> depend on which three-bond pathway is being measured and on the electronegativity
+of substituents. For the backbone <span class="arithmatex">\({}^3J_{\mathrm{H_N H_\alpha}}\)</span> coupling, which is the most
+frequently measured in protein NMR, <strong>Vuister &amp; Bax (1993)</strong> calibrated:</p>
+<div class="arithmatex">\[
+A = 6.98\,\text{Hz}, \quad B = -1.38\,\text{Hz}, \quad C = 1.72\,\text{Hz}
+\]</div>
+<p>using a database of proteins with known crystal structures.</p>
+<h3 id="connection-to-the-backbone-dihedral-phi">Connection to the Backbone Dihedral <span class="arithmatex">\(\phi\)</span></h3>
+<p>The <span class="arithmatex">\({}^3J_{\mathrm{H_N H_\alpha}}\)</span> coupling is measured between the amide proton H<span class="arithmatex">\(_\mathrm{N}\)</span>
+and the alpha proton H<span class="arithmatex">\(_\alpha\)</span> of the <em>same</em> residue. The dihedral angle <span class="arithmatex">\(\theta\)</span> in the
+Karplus equation is the H<span class="arithmatex">\(_\mathrm{N}\)</span>–N–C<span class="arithmatex">\(_\alpha\)</span>–H<span class="arithmatex">\(_\alpha\)</span> dihedral. In diff-biophys,
+the backbone stores the conventional N–C<span class="arithmatex">\(_\alpha\)</span>–C(O)–N dihedral <span class="arithmatex">\(\phi\)</span> (defined on heavy
+atoms). The relationship is:</p>
+<div class="arithmatex">\[
+\theta = \phi - 60°
+\]</div>
+<p>so that <span class="arithmatex">\(J = A\cos^2(\phi - 60°) + B\cos(\phi - 60°) + C\)</span>.</p>
+<blockquote>
+<p>[!NOTE]
+The offset of <span class="arithmatex">\(-60°\)</span> arises from the fixed tetrahedral geometry at C<span class="arithmatex">\(_\alpha\)</span>: the alpha
+proton is roughly <span class="arithmatex">\(60°\)</span> displaced from the carbonyl carbon in the staggered conformation.
+Getting this offset right is critical — a <span class="arithmatex">\(60°\)</span> error in <span class="arithmatex">\(\phi\)</span> maps to the wrong J value.</p>
+</blockquote>
+<p>The Karplus curve is <strong>not injective</strong>: multiple <span class="arithmatex">\(\phi\)</span> values give the same <span class="arithmatex">\(J\)</span>. This
+four-fold ambiguity means J-couplings must be used in combination with other restraints
+(NOEs, chemical shifts, RDCs).</p>
+<h3 id="gradient-interpretation_2">Gradient Interpretation</h3>
+<div class="arithmatex">\[
+\frac{\partial J}{\partial \phi} = -2A\cos(\phi-60°)\sin(\phi-60°) - B\sin(\phi-60°) = -\sin(\phi-60°)\bigl[2A\cos(\phi-60°) + B\bigr]
+\]</div>
+<p>The gradient is large when the Karplus curve has a steep slope — near <span class="arithmatex">\(\phi \approx -120°\)</span>
+(extended <span class="arithmatex">\(\beta\)</span>-strand region) the curve is steep, so J-coupling restraints are strongly
+informative. Near the extrema of the curve (<span class="arithmatex">\(\phi \approx 0°\)</span> or <span class="arithmatex">\(\phi \approx 180°\)</span>) the
+gradient vanishes: J-couplings provide little torsional information there, and other
+restraints must compensate.</p>
+<hr />
+<h2 id="4-nmr-chemical-shifts">4. NMR: Chemical Shifts</h2>
+<h3 id="physical-intuition_3">Physical Intuition</h3>
+<p>The <strong>chemical shift</strong> <span class="arithmatex">\(\delta\)</span> (in ppm) measures how far the resonance frequency of a
+nucleus deviates from a standard reference compound. This deviation is caused by the local
+electronic environment: nearby electrons shield (or deshield) the nucleus from the external
+field. Because secondary structure organises the backbone into regular hydrogen-bond
+geometry, helices and strands produce characteristic, reproducible deviations from the shifts
+expected for an unstructured ("random coil") chain.</p>
+<h3 id="reference-values-and-secondary-shifts">Reference Values and Secondary Shifts</h3>
+<p>The <strong>random-coil chemical shift</strong> <span class="arithmatex">\(\delta^{\mathrm{RC}}_{\alpha}\)</span> for each amino acid type
+is measured in short unstructured peptides. The experimental <strong>secondary shift</strong> is then:</p>
+<div class="arithmatex">\[
+\Delta\delta = \delta^{\mathrm{obs}} - \delta^{\mathrm{RC}}
+\]</div>
+<p>For C<span class="arithmatex">\(_\alpha\)</span> nuclei (the most sensitive indicator), the empirical signatures are:</p>
+<table>
+<thead>
+<tr>
+<th>Secondary structure</th>
+<th><span class="arithmatex">\(\Delta\delta_{\mathrm{C}\alpha}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\alpha\)</span>-helix</td>
+<td><span class="arithmatex">\(\approx +3\)</span> ppm</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\beta\)</span>-sheet</td>
+<td><span class="arithmatex">\(\approx -1.5\)</span> ppm</td>
+</tr>
+<tr>
+<td>Random coil</td>
+<td><span class="arithmatex">\(\approx 0\)</span> ppm</td>
+</tr>
+</tbody>
+</table>
+<p>These offsets reflect systematic changes in the C<span class="arithmatex">\(_\alpha\)</span>–C<span class="arithmatex">\(_\beta\)</span> and N–C<span class="arithmatex">\(_\alpha\)</span> bond
+lengths and angles imposed by secondary-structure hydrogen bonding. Helical geometry
+elongates the C<span class="arithmatex">\(_\alpha\)</span>–C bond slightly, shifting C<span class="arithmatex">\(_\alpha\)</span> downfield.</p>
+<h3 id="softmax-weighted-gaussian-detector-in-phi-psi-space">Softmax-Weighted Gaussian Detector in <span class="arithmatex">\((\phi, \psi)\)</span> Space</h3>
+<p>Predicting C<span class="arithmatex">\(_\alpha\)</span> shifts from backbone dihedrals requires mapping Ramachandran space
+<span class="arithmatex">\((\phi, \psi)\)</span> onto a continuous scalar. diff-biophys implements a lightweight probabilistic
+model:</p>
+<p><strong>Step 1 — Define reference Gaussians.</strong> For each secondary-structure class
+<span class="arithmatex">\(k \in \{\text{helix}, \text{sheet}, \text{coil}\}\)</span>, place a 2D Gaussian in <span class="arithmatex">\((\phi,\psi)\)</span>
+space centred at its Ramachandran basin <span class="arithmatex">\((\mu_k^\phi, \mu_k^\psi)\)</span> with covariance
+<span class="arithmatex">\(\Sigma_k\)</span>:</p>
+<div class="arithmatex">\[
+\mathcal{G}_k(\phi,\psi) = \exp\!\left(-\tfrac{1}{2}\,\mathbf{x}^T\Sigma_k^{-1}\mathbf{x}\right), \quad \mathbf{x} = \begin{pmatrix}\phi - \mu_k^\phi \\ \psi - \mu_k^\psi\end{pmatrix}
+\]</div>
+<p><strong>Step 2 — Softmax weighting.</strong> Convert the Gaussian scores to class probabilities:</p>
+<div class="arithmatex">\[
+p_k(\phi,\psi) = \frac{\mathcal{G}_k(\phi,\psi)}{\sum_{k'} \mathcal{G}_{k'}(\phi,\psi)}
+\]</div>
+<p><strong>Step 3 — Weighted shift prediction.</strong></p>
+<div class="arithmatex">\[
+\hat{\delta}_{C\alpha}(\phi,\psi) = \delta^{\mathrm{RC}} + \sum_k p_k(\phi,\psi)\,\Delta\delta_k
+\]</div>
+<p>This function is everywhere smooth and differentiable in <span class="arithmatex">\((\phi,\psi)\)</span>, making it directly
+usable in gradient-based optimisation.</p>
+<blockquote>
+<p>[!TIP]
+The Ramachandran Gaussian centres used in diff-biophys are:
+helix <span class="arithmatex">\((-57°, -47°)\)</span>; sheet <span class="arithmatex">\((-119°, 113°)\)</span>; coil broadly distributed.
+Increasing the Gaussian widths <span class="arithmatex">\(\Sigma_k\)</span> softens the secondary-structure boundaries and
+produces smoother gradients at the expense of predictive sharpness.</p>
+</blockquote>
+<h3 id="gradient-interpretation_3">Gradient Interpretation</h3>
+<div class="arithmatex">\[
+\frac{\partial \hat{\delta}_{C\alpha}}{\partial \phi} = \sum_k \frac{\partial p_k}{\partial \phi}\,\Delta\delta_k
+\]</div>
+<p>The gradient points in <span class="arithmatex">\((\phi,\psi)\)</span> space toward the secondary-structure basin that would
+best account for the observed shift. If the observed C<span class="arithmatex">\(_\alpha\)</span> shift is <span class="arithmatex">\(+2.5\)</span> ppm (helix-
+like) but the current <span class="arithmatex">\(\phi\)</span> is in the sheet region, the gradient will push <span class="arithmatex">\(\phi\)</span> toward
+the helical basin — directly encoding secondary-structure propensity as a differentiable
+force.</p>
+<hr />
+<h2 id="5-nmr-residual-dipolar-couplings">5. NMR: Residual Dipolar Couplings</h2>
+<h3 id="physical-intuition_4">Physical Intuition</h3>
+<p>In free solution, molecular tumbling averages the direct (dipolar) coupling between two
+nuclear spins to zero. When the molecule is <strong>partially aligned</strong> — for example, by dissolving
+it in a dilute liquid crystal, bicelle medium, or by using a paramagnetic tag — the tumbling
+becomes anisotropic. A small net orientation survives, and the dipolar coupling does not
+fully average away. The <strong>residual dipolar coupling</strong> (RDC) <span class="arithmatex">\(D\)</span> that remains encodes the
+orientation of each inter-nuclear vector relative to the molecular alignment frame.</p>
+<h3 id="the-saupe-alignment-tensor">The Saupe Alignment Tensor</h3>
+<p>The partial alignment is described by the <strong>Saupe order tensor</strong> <span class="arithmatex">\(\mathbf{S}\)</span>, a
+<span class="arithmatex">\(3\times3\)</span> real symmetric traceless matrix:</p>
+<div class="arithmatex">\[
+\mathbf{S} = \begin{pmatrix} S_{xx} &amp; S_{xy} &amp; S_{xz} \\ S_{xy} &amp; S_{yy} &amp; S_{yz} \\ S_{xz} &amp; S_{yz} &amp; S_{zz} \end{pmatrix}, \quad \mathrm{tr}(\mathbf{S}) = 0
+\]</div>
+<p>Because it is symmetric and traceless, <span class="arithmatex">\(\mathbf{S}\)</span> has five independent components. In its
+<strong>principal axis frame (PAF)</strong>, it is diagonal:</p>
+<div class="arithmatex">\[
+\mathbf{S}^{\mathrm{PAF}} = \begin{pmatrix} S_{xx}^P &amp; 0 &amp; 0 \\ 0 &amp; S_{yy}^P &amp; 0 \\ 0 &amp; 0 &amp; S_{zz}^P \end{pmatrix}, \quad S_{xx}^P + S_{yy}^P + S_{zz}^P = 0
+\]</div>
+<p>The largest eigenvalue defines the principal axis (the preferred molecular orientation); the
+asymmetry parameter <span class="arithmatex">\(\eta = (S_{xx}^P - S_{yy}^P)/S_{zz}^P\)</span> quantifies the rhombicity of the
+alignment.</p>
+<h3 id="the-dipolar-coupling-formula">The Dipolar Coupling Formula</h3>
+<p>For a bond vector <span class="arithmatex">\(\hat{\mathbf{v}}\)</span> (unit vector from nucleus <span class="arithmatex">\(i\)</span> to nucleus <span class="arithmatex">\(j\)</span>), the
+predicted RDC is:</p>
+<div class="arithmatex">\[
+\boxed{D_{ij} = D_{\max}\sum_{\alpha,\beta} v_\alpha\, S_{\alpha\beta}\, v_\beta = D_{\max}\,\hat{\mathbf{v}}^T \mathbf{S}\,\hat{\mathbf{v}}}
+\]</div>
+<p>where the prefactor <span class="arithmatex">\(D_{\max}\)</span> is the maximum possible dipolar coupling:</p>
+<div class="arithmatex">\[
+D_{\max} = -\frac{\mu_0}{4\pi}\frac{\gamma_I \gamma_S \hbar}{r_{IS}^3}
+\]</div>
+<p>with <span class="arithmatex">\(\gamma_I, \gamma_S\)</span> the gyromagnetic ratios of the two nuclei and <span class="arithmatex">\(r_{IS}\)</span> the
+internuclear distance (fixed for covalent bonds). For the backbone <span class="arithmatex">\(^1\mathrm{H}\)</span>–<span class="arithmatex">\(^{15}\mathrm{N}\)</span>
+bond (<span class="arithmatex">\(r_{NH} = 1.04\)</span> Å), <span class="arithmatex">\(D_{\max} \approx -21.7\)</span> kHz.</p>
+<h3 id="the-magic-angle">The Magic Angle</h3>
+<p>In the PAF with axial symmetry (<span class="arithmatex">\(\eta = 0\)</span>, <span class="arithmatex">\(S_{xx}^P = S_{yy}^P = -S_{zz}^P/2\)</span>):</p>
+<div class="arithmatex">\[
+D \propto \frac{3\cos^2\theta - 1}{2}
+\]</div>
+<p>where <span class="arithmatex">\(\theta\)</span> is the angle between the bond vector and the principal axis <span class="arithmatex">\(\hat{z}\)</span>. This
+function equals zero at:</p>
+<div class="arithmatex">\[
+\theta^* = \arccos\!\left(\frac{1}{\sqrt{3}}\right) \approx 54.74°
+\]</div>
+<p>This is the <strong>magic angle</strong>: any bond at this angle produces zero RDC regardless of the
+alignment magnitude. Conversely, a bond parallel to the principal axis (<span class="arithmatex">\(\theta = 0\)</span>) yields
+the maximum coupling <span class="arithmatex">\(D_{\max}\,S_{zz}\)</span>.</p>
+<blockquote>
+<p>[!NOTE]
+The magic angle at <span class="arithmatex">\(\approx 54.74°\)</span> also appears in magic-angle spinning (MAS) solid-state
+NMR, where mechanical rotation at this angle about the field averages dipolar couplings to
+zero — the same underlying geometry.</p>
+</blockquote>
+<h3 id="svd-based-tensor-fitting">SVD-Based Tensor Fitting</h3>
+<p>Given a set of experimental RDCs <span class="arithmatex">\(\{D_{ij}^{\mathrm{exp}}\}\)</span> and known bond vector orientations
+<span class="arithmatex">\(\{\hat{\mathbf{v}}_{ij}\}\)</span>, the five independent components of <span class="arithmatex">\(\mathbf{S}\)</span> can be
+determined by linear least squares. Define for each bond the 5-element basis vector:</p>
+<div class="arithmatex">\[
+\mathbf{A}_{ij} = D_{\max}\!\begin{pmatrix} v_x^2 - v_z^2 \\ v_y^2 - v_z^2 \\ 2v_x v_y \\ 2v_x v_z \\ 2v_y v_z \end{pmatrix}
+\]</div>
+<p>Stack into a matrix <span class="arithmatex">\(\mathbf{A}\)</span> and solve <span class="arithmatex">\(\mathbf{A}\,\mathbf{s} = \mathbf{D}^{\mathrm{exp}}\)</span>
+via <strong>singular value decomposition (SVD)</strong>. The SVD is differentiable in JAX via
+<code>jax.numpy.linalg.svd</code>, enabling end-to-end gradient flow through tensor fitting into the
+structural coordinates.</p>
+<h3 id="gradient-interpretation_4">Gradient Interpretation</h3>
+<div class="arithmatex">\[
+\frac{\partial D_{ij}}{\partial \mathbf{r}_i} = D_{\max}\,\frac{\partial}{\partial \mathbf{r}_i}\bigl[\hat{\mathbf{v}}^T\mathbf{S}\hat{\mathbf{v}}\bigr] = \frac{2 D_{\max}}{r_{ij}}\left(\mathbf{S}\hat{\mathbf{v}} - (\hat{\mathbf{v}}^T\mathbf{S}\hat{\mathbf{v}})\hat{\mathbf{v}}\right)
+\]</div>
+<p>This gradient is zero when <span class="arithmatex">\(\hat{\mathbf{v}}\)</span> is an eigenvector of <span class="arithmatex">\(\mathbf{S}\)</span> — the bond
+is already aligned with a principal axis of the tensor. Otherwise, the gradient tilts the
+bond toward the axis that reduces the RDC residual, providing orientational restraining
+forces on every inter-nuclear vector simultaneously.</p>
+<hr />
+<h2 id="6-nmr-ring-current-shifts">6. NMR: Ring Current Shifts</h2>
+<h3 id="physical-intuition_5">Physical Intuition</h3>
+<p>Aromatic rings (Phe, Tyr, Trp, His) support a <strong>ring current</strong>: the delocalized <span class="arithmatex">\(\pi\)</span>
+electrons circulate in the plane of the ring when placed in a magnetic field, generating a
+secondary magnetic field. This secondary field has a distinctive spatial pattern — it
+<strong>reinforces</strong> the external field in the plane of the ring (deshielding nearby nuclei) and
+<strong>opposes</strong> it along the ring axis (shielding nuclei above and below). Protons positioned
+above the face of a benzene ring therefore resonate at unusually high field (low <span class="arithmatex">\(\delta\)</span>).</p>
+<h3 id="johnson-bovey-model">Johnson-Bovey Model</h3>
+<p>The classic model (Johnson &amp; Bovey 1958) treats each aromatic ring as a circular current
+loop. The additional shielding <span class="arithmatex">\(\Delta\sigma\)</span> at a point <span class="arithmatex">\(P\)</span> displaced by vector <span class="arithmatex">\(\mathbf{r}\)</span>
+from the ring centre is:</p>
+<div class="arithmatex">\[
+\Delta\sigma = \frac{i\, e^2}{6mc^2 a}\!\left[\frac{1}{k^2}\!\left(\frac{2-k^2}{k'}\,K(k) - \frac{1}{k'}\,E(k)\right) - 1\right] \cdot \frac{a}{R}
+\]</div>
+<p>where <span class="arithmatex">\(K(k)\)</span> and <span class="arithmatex">\(E(k)\)</span> are complete elliptic integrals, <span class="arithmatex">\(a\)</span> is the ring radius, <span class="arithmatex">\(R\)</span> is the
+distance from <span class="arithmatex">\(P\)</span> to the ring plane, <span class="arithmatex">\(k^2 = 4aR/[(a+R)^2 + z^2]\)</span>, and <span class="arithmatex">\(i\)</span> is the ring-current
+intensity. For practical use in diff-biophys, this is simplified to the <strong>Haigh-Mallion</strong>
+approximation:</p>
+<div class="arithmatex">\[
+\boxed{\Delta\delta = i_{\mathrm{ring}}\sum_{\mathrm{triangles}} B_n \frac{3\cos^2\xi_n - 1}{r_n^3}}
+\]</div>
+<p>where the sum is over triangles tessellating the ring, <span class="arithmatex">\(r_n\)</span> is the distance from the proton
+to the centroid of triangle <span class="arithmatex">\(n\)</span>, and <span class="arithmatex">\(\xi_n\)</span> is the angle between the proton vector and the
+ring normal. The <span class="arithmatex">\(r_n^{-3}\)</span> dependence is the hallmark of a magnetic dipole field.</p>
+<blockquote>
+<p>[!NOTE]
+The ring-current shielding cone is commonly depicted as an hourglass (negative <span class="arithmatex">\(\Delta\delta\)</span>
+above and below the ring) and a torus (positive <span class="arithmatex">\(\Delta\delta\)</span> in the ring plane). This
+spatial pattern is extremely useful in NMR structure determination: an upfield-shifted
+proton (<span class="arithmatex">\(\Delta\delta &lt; 0\)</span>) almost certainly sits above an aromatic ring, constraining the
+relative geometry.</p>
+</blockquote>
+<h3 id="distance-dependence-and-gradient">Distance Dependence and Gradient</h3>
+<p>The <span class="arithmatex">\(1/r^3\)</span> dependence makes ring-current shifts <strong>very sensitive to short-range geometry</strong>:
+doubling the distance reduces the effect eightfold. The gradient:</p>
+<div class="arithmatex">\[
+\frac{\partial \Delta\delta}{\partial \mathbf{r}_H} \propto \frac{1}{r^4}
+\]</div>
+<p>is therefore strongly peaked at close approach. In structure refinement, ring-current shift
+restraints act as a precise positional anchor for protons near aromatic residues, often
+resolving ambiguities that distance restraints alone cannot.</p>
+<hr />
+<h2 id="7-circular-dichroism-cd">7. Circular Dichroism (CD)</h2>
+<h3 id="physical-intuition_6">Physical Intuition</h3>
+<p><strong>Circular dichroism</strong> measures the differential absorption of left- and right-handed
+circularly polarised light by a chiral molecule:</p>
+<div class="arithmatex">\[
+\Delta A(\lambda) = A_L(\lambda) - A_R(\lambda)
+\]</div>
+<p>Proteins absorb UV light primarily through <strong>amide chromophores</strong> (the peptide bond C=O and
+N–H groups, absorbing near 190–230 nm). Because each amide has a fixed orientation along
+the backbone, secondary structure places the amide transition dipoles in regular geometric
+arrangements. These arrangements determine how the electric and magnetic transition moments
+of adjacent amides couple — and that coupling determines the CD spectrum shape.</p>
+<h3 id="transition-dipole-moments-and-amide-transitions">Transition Dipole Moments and Amide Transitions</h3>
+<p>Each peptide amide has two main electronic transitions relevant to far-UV CD:</p>
+<table>
+<thead>
+<tr>
+<th>Transition</th>
+<th>Wavelength</th>
+<th>Character</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(n \to \pi^*\)</span></td>
+<td>~220 nm</td>
+<td>Weak, <span class="arithmatex">\(\mathbf{m}\)</span> along C=O axis</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\pi \to \pi^*\)</span></td>
+<td>~190 nm</td>
+<td>Strong, <span class="arithmatex">\(\boldsymbol{\mu}\)</span> in amide plane</td>
+</tr>
+</tbody>
+</table>
+<p>The <span class="arithmatex">\(\alpha\)</span>-helical spectrum shows a characteristic <strong>double minimum at 208 nm and 222 nm</strong>
+from the splitting of the <span class="arithmatex">\(\pi\to\pi^*\)</span> band by exciton coupling between neighbouring
+amides, plus the <span class="arithmatex">\(n\to\pi^*\)</span> band. <span class="arithmatex">\(\beta\)</span>-sheets show a single minimum near 216 nm (from
+their antiparallel dipole arrangement) and a positive band near 195 nm.</p>
+<h3 id="devoe-coupled-oscillator-matrix-method">DeVoe Coupled-Oscillator / Matrix Method</h3>
+<p>For a protein with <span class="arithmatex">\(N\)</span> amide chromophores, the CD is computed via the <strong>matrix method</strong>
+(Bayley <em>et al.</em>, Tinoco <em>et al.</em>). Each chromophore <span class="arithmatex">\(i\)</span> has a transition frequency
+<span class="arithmatex">\(\nu_i\)</span>, electric transition dipole moment <span class="arithmatex">\(\boldsymbol{\mu}_i\)</span>, and magnetic transition
+dipole moment <span class="arithmatex">\(\mathbf{m}_i\)</span>. Off-diagonal coupling elements <span class="arithmatex">\(V_{ij}\)</span> between chromophores
+<span class="arithmatex">\(i\)</span> and <span class="arithmatex">\(j\)</span> are computed from the dipole-dipole interaction:</p>
+<div class="arithmatex">\[
+V_{ij} = \frac{1}{r_{ij}^3}\left[\boldsymbol{\mu}_i \cdot \boldsymbol{\mu}_j - 3(\boldsymbol{\mu}_i\cdot\hat{\mathbf{r}}_{ij})(\boldsymbol{\mu}_j\cdot\hat{\mathbf{r}}_{ij})\right]
+\]</div>
+<p>The full interaction Hamiltonian is diagonalised:</p>
+<div class="arithmatex">\[
+\mathbf{H}\,\mathbf{c}_k = E_k\,\mathbf{c}_k
+\]</div>
+<p>The <span class="arithmatex">\(k\)</span>-th normal mode has <strong>rotational strength</strong> <span class="arithmatex">\(R_k\)</span>:</p>
+<div class="arithmatex">\[
+R_k = \mathrm{Im}\!\left(\boldsymbol{\mu}_k \cdot \mathbf{m}_k\right), \quad \boldsymbol{\mu}_k = \sum_i c_{ki}\,\boldsymbol{\mu}_i, \quad \mathbf{m}_k = \sum_i c_{ki}\,\mathbf{m}_i
+\]</div>
+<p>The CD spectrum is then:</p>
+<div class="arithmatex">\[
+\Delta\varepsilon(\lambda) = \sum_k R_k\, L(\lambda - \lambda_k)
+\]</div>
+<p>where <span class="arithmatex">\(L\)</span> is a Gaussian line shape centred at wavelength <span class="arithmatex">\(\lambda_k\)</span>.</p>
+<blockquote>
+<p>[!IMPORTANT]
+The rotational strength <span class="arithmatex">\(R_k\)</span> is non-zero only if the electric and magnetic transition
+dipoles of the <span class="arithmatex">\(k\)</span>-th mode have a non-zero dot product — requiring chirality. An achiral
+molecule has <span class="arithmatex">\(\sum_k R_k = 0\)</span> for each band (the Kuhn sum rule). This is why CD is
+uniquely sensitive to the handedness of secondary structure.</p>
+</blockquote>
+<h3 id="why-helices-and-sheets-differ">Why Helices and Sheets Differ</h3>
+<p>In a right-handed <span class="arithmatex">\(\alpha\)</span>-helix, adjacent amide C=O dipoles point roughly parallel and
+spiral around the helix axis. The exciton coupling splits the <span class="arithmatex">\(\pi\to\pi^*\)</span> band into a
+positive component near 193 nm (the parallel exciton, <span class="arithmatex">\(A\)</span> component) and a negative component
+near 208 nm (the perpendicular exciton). The <span class="arithmatex">\(n\to\pi^*\)</span> band at 222 nm remains negative.
+The net result: helices are identified by a large negative double minimum at 208 and 222 nm
+and a strong positive band at 193 nm.</p>
+<p>In antiparallel <span class="arithmatex">\(\beta\)</span>-sheets, neighbouring strand amides are antiparallel. The coupling is
+much weaker and produces a single negative minimum near 216 nm and a positive band near
+195–198 nm — a distinctly different signature.</p>
+<h3 id="gradient-interpretation_5">Gradient Interpretation</h3>
+<p>The CD depends on atomic positions through the inter-chromophore distances <span class="arithmatex">\(r_{ij}\)</span> and
+the orientations of transition dipole moments <span class="arithmatex">\(\boldsymbol{\mu}_i\)</span>:</p>
+<div class="arithmatex">\[
+\frac{\partial \Delta\varepsilon}{\partial \mathbf{r}_k} = \sum_\ell \frac{\partial \Delta\varepsilon}{\partial V_\ell} \cdot \frac{\partial V_\ell}{\partial \mathbf{r}_k}
+\]</div>
+<p>The gradient tells you which backbone atom, if moved, would most change the predicted CD
+spectrum at a given wavelength — powerful for refining secondary-structure content against
+experimental CD data.</p>
+<hr />
+<h2 id="8-cryo-em-fourier-shell-correlation-fsc">8. Cryo-EM: Fourier Shell Correlation (FSC)</h2>
+<h3 id="physical-intuition_7">Physical Intuition</h3>
+<p>In single-particle cryo-EM, tens of thousands of particle images are collected and classified
+into viewing orientations. The gold-standard protocol divides the dataset randomly into two
+<strong>half-datasets</strong>, each reconstructed independently into a 3D density map. Comparing these
+two half-maps tells you how much signal (vs. noise) is present at each spatial frequency —
+this is the <strong>Fourier Shell Correlation (FSC)</strong>.</p>
+<h3 id="the-fsc-as-a-function-of-spatial-frequency">The FSC as a Function of Spatial Frequency</h3>
+<p>The FSC is defined in reciprocal space. For each shell of spatial frequency <span class="arithmatex">\(|\mathbf{k}|\)</span>
+(radius <span class="arithmatex">\(s\)</span> in the Fourier volume), compute the normalised cross-correlation between the two
+half-map Fourier transforms <span class="arithmatex">\(F_1\)</span> and <span class="arithmatex">\(F_2\)</span>:</p>
+<div class="arithmatex">\[
+\boxed{\mathrm{FSC}(s) = \frac{\displaystyle\sum_{|\mathbf{k}|=s} F_1(\mathbf{k})\, F_2^*(\mathbf{k})}{\sqrt{\displaystyle\sum_{|\mathbf{k}|=s} |F_1(\mathbf{k})|^2 \cdot \displaystyle\sum_{|\mathbf{k}|=s} |F_2(\mathbf{k})|^2}}}
+\]</div>
+<p>FSC ranges from 1 (perfect agreement — pure signal) to 0 (no correlation — pure noise).
+The spatial frequency at which <span class="arithmatex">\(\mathrm{FSC}(s)\)</span> crosses a threshold determines the
+<strong>resolution</strong> of the reconstruction.</p>
+<h3 id="the-0143-gold-standard-threshold">The 0.143 Gold-Standard Threshold</h3>
+<p>The <strong>0.143 criterion</strong> (Rosenthal &amp; Henderson 2003; Scheres &amp; Chen 2012) is the standard
+threshold for reporting cryo-EM resolution. The value 0.143 was derived from the half-map
+FSC relationship to the full-dataset FSC via the Rosenthal-Henderson formula:</p>
+<div class="arithmatex">\[
+\mathrm{FSC}_{\mathrm{full}}(s) = \frac{2\,\mathrm{FSC}_{1/2}(s)}{1 + \mathrm{FSC}_{1/2}(s)}
+\]</div>
+<p>When <span class="arithmatex">\(\mathrm{FSC}_{1/2}(s) = 0.143\)</span>, <span class="arithmatex">\(\mathrm{FSC}_{\mathrm{full}}(s) = 0.25\)</span>, which
+corresponds roughly to a signal-to-noise ratio of 1 in the full map. Reporting the spatial
+frequency <span class="arithmatex">\(s^*\)</span> where <span class="arithmatex">\(\mathrm{FSC}_{1/2}(s^*) = 0.143\)</span> as the map resolution is
+conservative: it relies only on internal data consistency, not on reference model bias.</p>
+<blockquote>
+<p>[!WARNING]
+Resolution defined by FSC is the <em>average</em> resolution across the entire map. Local
+resolution varies enormously within a particle — flexible loops can be at 8 Å while the
+core rigid domain is at 2.5 Å. Use local resolution estimation (e.g., MonoRes,
+ResMap) to identify well-resolved regions for restraint-based fitting.</p>
+</blockquote>
+<h3 id="differentiability-with-respect-to-the-map">Differentiability with Respect to the Map</h3>
+<p>In diff-biophys, the FSC loss is used to refine an atomic model into a density map. The
+predicted density map <span class="arithmatex">\(\rho_{\mathrm{pred}}(\mathbf{r})\)</span> is computed by convolving atom
+positions with Gaussian kernels:</p>
+<div class="arithmatex">\[
+\rho_{\mathrm{pred}}(\mathbf{r}) = \sum_i w_i \exp\!\left(-\frac{|\mathbf{r} - \mathbf{r}_i|^2}{2\sigma^2}\right)
+\]</div>
+<p>The FSC between <span class="arithmatex">\(\rho_{\mathrm{pred}}\)</span> and the experimental map <span class="arithmatex">\(\rho_{\mathrm{exp}}\)</span> is
+computed via 3D FFT. Since the FFT is a linear operation and the Gaussian blurring is
+differentiable, the gradient <span class="arithmatex">\(\partial \mathrm{FSC}(s) / \partial \mathbf{r}_i\)</span> is computed
+automatically via JAX autodiff. The gradient at each atom encodes: <em>moving atom <span class="arithmatex">\(i\)</span> in this
+direction would improve phase agreement with the experimental map at spatial frequency <span class="arithmatex">\(s\)</span></em>.</p>
+<h3 id="gradient-interpretation_6">Gradient Interpretation</h3>
+<div class="arithmatex">\[
+\frac{\partial \mathrm{FSC}(s)}{\partial \mathbf{r}_i} = \frac{\partial \mathrm{FSC}}{\partial \rho_{\mathrm{pred}}} \cdot \frac{\partial \rho_{\mathrm{pred}}}{\partial \mathbf{r}_i}
+\]</div>
+<div class="arithmatex">\[
+\frac{\partial \rho_{\mathrm{pred}}}{\partial \mathbf{r}_i} = w_i\,\frac{\mathbf{r} - \mathbf{r}_i}{\sigma^2}\,\exp\!\left(-\frac{|\mathbf{r} - \mathbf{r}_i|^2}{2\sigma^2}\right)
+\]</div>
+<p>This gradient has a spatial range of <span class="arithmatex">\(\sim \sigma\)</span> around each atom. Atoms in high-density
+regions of the experimental map and in high-FSC shells receive larger gradient contributions —
+exactly the regions where the structural restraint is most reliable.</p>
+<hr />
+<h2 id="9-kabsch-alignment">9. Kabsch Alignment</h2>
+<h3 id="physical-intuition_8">Physical Intuition</h3>
+<p>Before computing RMSD between two sets of atom positions (e.g., a predicted model and a
+crystal structure), the structures must be <strong>superimposed</strong>: translated so that their
+centres of mass coincide, then rotated to minimise the residual distance. The <strong>Kabsch
+algorithm</strong> (Kabsch 1976) finds the <em>optimal</em> rotation matrix for this superposition in
+closed form via SVD.</p>
+<h3 id="rmsd-minimisation">RMSD Minimisation</h3>
+<p>Given two sets of <span class="arithmatex">\(N\)</span> corresponding atom positions <span class="arithmatex">\(\{\mathbf{p}_i\}\)</span> (model) and
+<span class="arithmatex">\(\{\mathbf{q}_i\}\)</span> (reference), both centred at the origin:</p>
+<div class="arithmatex">\[
+\mathrm{RMSD} = \sqrt{\frac{1}{N}\sum_{i=1}^N |\mathbf{R}\,\mathbf{p}_i - \mathbf{q}_i|^2}
+\]</div>
+<p>Minimising RMSD over all proper rotations <span class="arithmatex">\(\mathbf{R} \in SO(3)\)</span> is equivalent to
+maximising <span class="arithmatex">\(\mathrm{tr}(\mathbf{R}\,\mathbf{H})\)</span> where <span class="arithmatex">\(\mathbf{H}\)</span> is the
+<strong>cross-covariance matrix</strong>:</p>
+<div class="arithmatex">\[
+\mathbf{H} = \sum_{i=1}^N \mathbf{p}_i\,\mathbf{q}_i^T
+\]</div>
+<h3 id="svd-based-optimal-rotation">SVD-Based Optimal Rotation</h3>
+<p>Compute the SVD of <span class="arithmatex">\(\mathbf{H}\)</span>:</p>
+<div class="arithmatex">\[
+\mathbf{H} = \mathbf{U}\,\boldsymbol{\Sigma}\,\mathbf{V}^T
+\]</div>
+<p>The optimal rotation matrix is:</p>
+<div class="arithmatex">\[
+\boxed{\mathbf{R}^* = \mathbf{V}\,\mathrm{diag}(1,\,1,\,d)\,\mathbf{U}^T}
+\]</div>
+<p>where <span class="arithmatex">\(d = \mathrm{sign}(\det(\mathbf{V}\mathbf{U}^T)) \in \{+1, -1\}\)</span>. The <span class="arithmatex">\(d\)</span> factor
+ensures that <span class="arithmatex">\(\mathbf{R}^*\)</span> is a proper rotation (<span class="arithmatex">\(\det\mathbf{R}^* = +1\)</span>, not a reflection).</p>
+<blockquote>
+<p>[!IMPORTANT]
+When two or more singular values of <span class="arithmatex">\(\mathbf{H}\)</span> are equal (a degenerate case), the
+optimal rotation is not unique. This can cause discontinuous gradient behaviour during
+optimisation. diff-biophys adds a small regularisation to <span class="arithmatex">\(\mathbf{H}\)</span> to lift degeneracies.</p>
+</blockquote>
+<h3 id="differentiability-through-svd">Differentiability Through SVD</h3>
+<p>JAX's <code>jax.numpy.linalg.svd</code> is differentiable, so the entire Kabsch alignment pipeline
+is differentiable. The gradient of RMSD with respect to model atom positions <span class="arithmatex">\(\mathbf{p}_i\)</span>
+propagates through:</p>
+<ol>
+<li>The centring step (subtract mean — linear, trivially differentiable).</li>
+<li>The cross-covariance <span class="arithmatex">\(\mathbf{H}\)</span> (bilinear in <span class="arithmatex">\(\mathbf{p}\)</span> and <span class="arithmatex">\(\mathbf{q}\)</span>).</li>
+<li>The SVD (differentiable via matrix perturbation theory).</li>
+<li>The rotation application and distance sum.</li>
+</ol>
+<div class="arithmatex">\[
+\frac{\partial \mathrm{RMSD}}{\partial \mathbf{p}_i} = \frac{1}{N\,\mathrm{RMSD}}\left(\mathbf{R}^* \mathbf{p}_i - \mathbf{q}_i\right) + \text{(rotation gradient)}
+\]</div>
+<p>The first term is the direct positional residual; the second term accounts for how moving
+atom <span class="arithmatex">\(i\)</span> changes the optimal rotation itself — a non-trivial but automatically handled
+contribution.</p>
+<h3 id="gradient-interpretation_7">Gradient Interpretation</h3>
+<p>The gradient <span class="arithmatex">\(\partial \mathrm{RMSD}/\partial \mathbf{p}_i\)</span> points from the current
+(rotated) position of atom <span class="arithmatex">\(i\)</span> toward its target position in the reference structure. The
+magnitude is inversely proportional to the current RMSD (it diverges as RMSD <span class="arithmatex">\(\to 0\)</span>, but
+the loss <span class="arithmatex">\(\mathrm{RMSD}^2\)</span> has well-behaved gradients). Atoms with large displacement from
+the reference contribute most to the gradient, making RMSD minimisation naturally focus on
+the worst-fitting regions.</p>
+<hr />
+<h2 id="10-radius-of-gyration">10. Radius of Gyration</h2>
+<h3 id="physical-intuition_9">Physical Intuition</h3>
+<p>The <strong>radius of gyration</strong> <span class="arithmatex">\(R_g\)</span> is a single number that characterises how compact or
+extended a molecular structure is — the root-mean-square distance of all atoms from the
+centre of mass. A tightly folded globular protein has a small <span class="arithmatex">\(R_g\)</span>; an unfolded chain or
+elongated rod has a large one. <span class="arithmatex">\(R_g\)</span> appears naturally in both SAXS (Guinier approximation)
+and as a standalone compactness restraint in structure prediction.</p>
+<h3 id="definition">Definition</h3>
+<p>For <span class="arithmatex">\(N\)</span> atoms at positions <span class="arithmatex">\(\{\mathbf{r}_i\}\)</span>, the uniform-weight radius of gyration is:</p>
+<div class="arithmatex">\[
+R_g^2 = \frac{1}{N}\sum_{i=1}^N |\mathbf{r}_i - \mathbf{r}_{\mathrm{cm}}|^2
+\]</div>
+<p>where the centre of mass is <span class="arithmatex">\(\mathbf{r}_{\mathrm{cm}} = \frac{1}{N}\sum_i \mathbf{r}_i\)</span>.</p>
+<h3 id="mass-weighted-version">Mass-Weighted Version</h3>
+<p>In real molecules each atom has a different mass <span class="arithmatex">\(m_i\)</span> (or, in a coarse-grained
+representation, a different weight). The mass-weighted <span class="arithmatex">\(R_g\)</span> is:</p>
+<div class="arithmatex">\[
+\boxed{R_g^2 = \frac{\sum_i m_i\,|\mathbf{r}_i - \mathbf{r}_{\mathrm{cm}}|^2}{\sum_i m_i}, \quad \mathbf{r}_{\mathrm{cm}} = \frac{\sum_i m_i\,\mathbf{r}_i}{\sum_i m_i}}
+\]</div>
+<p>For SAXS, the relevant <span class="arithmatex">\(R_g\)</span> is electron-density weighted (effectively weighted by the
+number of electrons per atom, <span class="arithmatex">\(Z_i\)</span>). diff-biophys uses <span class="arithmatex">\(Z_i\)</span> weights by default when
+computing <span class="arithmatex">\(R_g\)</span> from an all-atom model for Guinier analysis.</p>
+<h3 id="scaling-laws">Scaling Laws</h3>
+<p>Polymer physics predicts that for an unfolded chain of <span class="arithmatex">\(N\)</span> residues, <span class="arithmatex">\(R_g \propto N^\nu\)</span>
+where the Flory exponent <span class="arithmatex">\(\nu \approx 0.6\)</span> for a good solvent. For a compact globular
+protein:</p>
+<div class="arithmatex">\[
+R_g \approx r_0 N^{1/3}, \quad r_0 \approx 4.75\,\text{Å} \quad (\text{Dima \&amp; Thirumalai 2004})
+\]</div>
+<p>This scaling allows a rough sanity check: if the computed <span class="arithmatex">\(R_g\)</span> is much larger than
+<span class="arithmatex">\(r_0 N^{1/3}\)</span>, the model is likely unfolded or incorrect.</p>
+<h3 id="use-as-a-compaction-restraint">Use as a Compaction Restraint</h3>
+<p>A loss term penalising deviation from a target radius of gyration <span class="arithmatex">\(R_g^{\mathrm{target}}\)</span>:</p>
+<div class="arithmatex">\[
+\mathcal{L}_{R_g} = \lambda_{R_g}\,\left(R_g - R_g^{\mathrm{target}}\right)^2
+\]</div>
+<p>provides a gentle, global compaction or expansion force. Unlike pairwise distance
+restraints, <span class="arithmatex">\(R_g\)</span> acts on all atoms simultaneously through the centre of mass.</p>
+<h3 id="gradient">Gradient</h3>
+<div class="arithmatex">\[
+\frac{\partial R_g}{\partial \mathbf{r}_k} = \frac{m_k}{R_g \sum_j m_j}\left[(\mathbf{r}_k - \mathbf{r}_{\mathrm{cm}}) - \frac{m_k}{\sum_j m_j}\sum_i m_i(\mathbf{r}_i - \mathbf{r}_{\mathrm{cm}})\right]
+\]</div>
+<p>For uniform masses this simplifies to:</p>
+<div class="arithmatex">\[
+\frac{\partial R_g}{\partial \mathbf{r}_k} = \frac{1}{N\,R_g}\left(\mathbf{r}_k - \mathbf{r}_{\mathrm{cm}}\right)
+\]</div>
+<p><strong>Gradient interpretation:</strong> The gradient for atom <span class="arithmatex">\(k\)</span> points radially outward from the
+centre of mass. A large <span class="arithmatex">\(|\partial R_g / \partial \mathbf{r}_k|\)</span> means that atom <span class="arithmatex">\(k\)</span> is
+far from the centroid — it is a peripheral atom whose movement would most change the overall
+compaction. When the target <span class="arithmatex">\(R_g\)</span> is smaller than the current one, the loss gradient drives
+all peripheral atoms inward, globally collapsing the structure.</p>
+<blockquote>
+<p>[!TIP]
+The <span class="arithmatex">\(R_g\)</span> restraint is particularly valuable in the early stages of <em>ab initio</em> folding from
+dihedrals: without it, unconstrained torsion-space optimisation often generates highly
+extended structures that satisfy local restraints (J-couplings, chemical shifts) but are
+unphysically large. A mild <span class="arithmatex">\(\lambda_{R_g}\)</span> provides a global shape prior.</p>
+</blockquote>
+<hr />
+<h2 id="references">References</h2>
+<ol>
+<li>
+<p><strong>Parsons, J., Holmes, J.B., Rojas, J.M., Tsai, J., Strauss, C.E.M.</strong> (2005).
+   Practical conversion from torsion space to Cartesian space for in silico protein
+   synthesis. <em>J. Comput. Chem.</em> <strong>26</strong>, 1063–1068.</p>
+</li>
+<li>
+<p><strong>Debye, P.</strong> (1915). Zerstreuung von Röntgenstrahlen. <em>Ann. Phys.</em> <strong>351</strong>, 809–823.</p>
+</li>
+<li>
+<p><strong>Guinier, A.</strong> (1939). La diffraction des rayons X aux très petits angles:
+   applications à l'étude de phénomènes ultramicroscopiques. <em>Ann. Phys.</em> <strong>12</strong>, 161–237.</p>
+</li>
+<li>
+<p><strong>Fraser, R.D.B., MacRae, T.P., Suzuki, E.</strong> (1978). An improved method for
+   calculating the contribution of solvent to the X-ray diffraction pattern of biological
+   molecules. <em>J. Appl. Crystallogr.</em> <strong>11</strong>, 693–694.</p>
+</li>
+<li>
+<p><strong>Waasmaier, D., Kirfel, A.</strong> (1995). New analytical scattering-factor functions for
+   free atoms and ions. <em>Acta Crystallogr. A</em> <strong>51</strong>, 416–431.</p>
+</li>
+<li>
+<p><strong>Karplus, M.</strong> (1959). Contact electron-spin coupling of nuclear magnetic moments.
+   <em>J. Chem. Phys.</em> <strong>30</strong>, 11–15.</p>
+</li>
+<li>
+<p><strong>Vuister, G.W., Bax, A.</strong> (1993). Quantitative J correlation: a new approach for
+   measuring homonuclear three-bond <span class="arithmatex">\(J(\text{H}^N\text{H}^\alpha)\)</span> coupling constants in
+   <span class="arithmatex">\(^{15}\)</span>N-enriched proteins. <em>J. Am. Chem. Soc.</em> <strong>115</strong>, 7772–7777.</p>
+</li>
+<li>
+<p><strong>Wishart, D.S., Sykes, B.D.</strong> (1994). The <span class="arithmatex">\(^{13}\)</span>C chemical-shift index: a simple
+   method for the identification of protein secondary structure using <span class="arithmatex">\(^{13}\)</span>C
+   chemical-shift data. <em>J. Biomol. NMR</em> <strong>4</strong>, 171–180.</p>
+</li>
+<li>
+<p><strong>Saupe, A.</strong> (1968). Recent results in the field of liquid crystals. <em>Angew. Chem.
+   Int. Ed. Engl.</em> <strong>7</strong>, 97–112.</p>
+</li>
+<li>
+<p><strong>Bax, A., Tjandra, N.</strong> (1997). High-resolution heteronuclear NMR of human ubiquitin
+    in an aqueous liquid crystalline medium. <em>J. Biomol. NMR</em> <strong>10</strong>, 289–292.</p>
+</li>
+<li>
+<p><strong>Johnson, C.E., Bovey, F.A.</strong> (1958). Calculation of nuclear magnetic resonance
+    spectra of aromatic hydrocarbons. <em>J. Chem. Phys.</em> <strong>29</strong>, 1012–1014.</p>
+</li>
+<li>
+<p><strong>Haigh, C.W., Mallion, R.B.</strong> (1979). Ring current theories in nuclear magnetic
+    resonance. <em>Prog. NMR Spectrosc.</em> <strong>13</strong>, 303–344.</p>
+</li>
+<li>
+<p><strong>Bayley, P.M., Nielsen, E.B., Schellman, J.A.</strong> (1969). The rotatory properties of
+    molecules containing two peptide groups: theory. <em>J. Phys. Chem.</em> <strong>73</strong>, 228–243.</p>
+</li>
+<li>
+<p><strong>Rosenthal, P.B., Henderson, R.</strong> (2003). Optimal determination of particle
+    orientation, absolute hand, and contrast loss in single-particle electron
+    cryomicroscopy. <em>J. Mol. Biol.</em> <strong>333</strong>, 721–745.</p>
+</li>
+<li>
+<p><strong>Scheres, S.H.W., Chen, S.</strong> (2012). Prevention of overfitting in cryo-EM structure
+    determination. <em>Nat. Methods</em> <strong>9</strong>, 853–854.</p>
+</li>
+<li>
+<p><strong>Kabsch, W.</strong> (1976). A solution for the best rotation to relate two sets of vectors.
+    <em>Acta Crystallogr. A</em> <strong>32</strong>, 922–923.</p>
+</li>
+<li>
+<p><strong>Dima, R.I., Thirumalai, D.</strong> (2004). Asymmetry in the shapes of folded and
+    denatured states of proteins. <em>J. Phys. Chem. B</em> <strong>108</strong>, 6564–6570.</p>
+</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

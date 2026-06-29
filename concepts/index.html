@@ -1,0 +1,1873 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Differentiable biophysical modeling in JAX">
+      
+      
+        <meta name="author" content="George Elkins">
+      
+      
+        <link rel="canonical" href="https://elkins-lab.github.io/diff-integrator/concepts/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../use_cases/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Concepts & Context - DiffIntegrator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-interdisciplinary-bridge-concepts-context" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DiffIntegrator" class="md-header__button md-logo" aria-label="DiffIntegrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DiffIntegrator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Concepts & Context
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts & Context
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../use_cases/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Use Cases
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../theory/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Core Theory
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/loss/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/01_hello_gradient_descent.ipynb" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/refinement/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DiffIntegrator" class="md-nav__button md-logo" aria-label="DiffIntegrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DiffIntegrator
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Context
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#for-machine-learning-engineers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📖 For Machine Learning Engineers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📖 For Machine Learning Engineers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem-proteins-are-dynamic-and-biology-lives-in-1d-spectra" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem: Proteins Are Dynamic, and Biology Lives in 1D Spectra
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-legacy-code-was-not-differentiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Legacy Code Was Not Differentiable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nerf-is-the-robot-arm-analogy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What NeRF Is — The Robot Arm Analogy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugging-into-a-jaxpytorch-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plugging Into a JAX/PyTorch Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concept-mapping-ml-biophysics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept Mapping: ML → Biophysics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-structural-biologists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧬 For Structural Biologists
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧬 For Structural Biologists">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-automatic-differentiation-actually-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Automatic Differentiation Actually Is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-gradient-descent-beats-monte-carlo-for-high-dimensional-problems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Gradient Descent Beats Monte Carlo for High-Dimensional Problems
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-descent-finds-local-minima-not-global-ones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient descent finds local minima, not global ones.
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gradient descent finds local minima, not global ones.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-real-world-limitation-rugged-landscapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⛰️ The Real-World Limitation: Rugged Landscapes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-jax-jit-vmap-delivers-gpu-speed-for-ensembles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How JAX jit + vmap Delivers GPU Speed for Ensembles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#software-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Software Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compatibility-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deep-dive-into-jax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎓 Deep Dive into JAX
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🎓 Deep Dive into JAX">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scientific-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scientific Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#high-level-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Level Frameworks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📚 Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use_cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../theory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Theory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/loss/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loss & Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/optimizer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/schedules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/saxs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAXS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/nmr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NMR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/cd_and_cryoem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CD & Cryo-EM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/01_hello_gradient_descent.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 · Hello, Gradient Descent!
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/02_nmr_fundamentals.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 · NMR Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/03_cd_spectroscopy.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 · CD Spectroscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/refinement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refinement Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#for-machine-learning-engineers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📖 For Machine Learning Engineers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📖 For Machine Learning Engineers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem-proteins-are-dynamic-and-biology-lives-in-1d-spectra" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem: Proteins Are Dynamic, and Biology Lives in 1D Spectra
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-legacy-code-was-not-differentiable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Legacy Code Was Not Differentiable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nerf-is-the-robot-arm-analogy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What NeRF Is — The Robot Arm Analogy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugging-into-a-jaxpytorch-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plugging Into a JAX/PyTorch Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concept-mapping-ml-biophysics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept Mapping: ML → Biophysics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-structural-biologists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧬 For Structural Biologists
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧬 For Structural Biologists">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-automatic-differentiation-actually-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Automatic Differentiation Actually Is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-gradient-descent-beats-monte-carlo-for-high-dimensional-problems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Gradient Descent Beats Monte Carlo for High-Dimensional Problems
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient-descent-finds-local-minima-not-global-ones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gradient descent finds local minima, not global ones.
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gradient descent finds local minima, not global ones.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-real-world-limitation-rugged-landscapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⛰️ The Real-World Limitation: Rugged Landscapes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-jax-jit-vmap-delivers-gpu-speed-for-ensembles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How JAX jit + vmap Delivers GPU Speed for Ensembles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#software-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Software Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compatibility-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deep-dive-into-jax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎓 Deep Dive into JAX
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🎓 Deep Dive into JAX">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scientific-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scientific Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#high-level-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Level Frameworks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📚 Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="the-interdisciplinary-bridge-concepts-context">🌉 The Interdisciplinary Bridge: Concepts &amp; Context</h1>
+<p>DiffBiophys sits at the intersection of two distinct fields: <strong>Deep Learning / Machine Learning (ML)</strong> and <strong>Structural Biology</strong>. This page acts as a "Rosetta Stone" to help specialists from either domain understand the context, terminology, and value of this library. A <a href="#glossary">Glossary</a> for undergraduates is provided at the end.</p>
+<hr />
+<h2 id="for-machine-learning-engineers">📖 For Machine Learning Engineers</h2>
+<p>You know how to build, train, and deploy neural networks in PyTorch or JAX. The biology may be unfamiliar, but the abstractions map cleanly onto what you already know.</p>
+<h3 id="the-problem-proteins-are-dynamic-and-biology-lives-in-1d-spectra">The Problem: Proteins Are Dynamic, and Biology Lives in 1D Spectra</h3>
+<p>AlphaFold revolutionised biology by predicting 3D atomic coordinates from a 1D amino acid sequence. But AlphaFold returns a <em>single static snapshot</em>. Real proteins exist in solution — constantly breathing, folding, and visiting many conformations as they perform their function. To characterise this motion experimentally, biologists collect spectra: <strong>SAXS</strong> (Small-Angle X-ray Scattering) and <strong>NMR</strong> (Nuclear Magnetic Resonance) are the two most important.</p>
+<p>Neither experiment gives you a 3D picture. Instead, each produces a <strong>1D curve</strong> (or a sparse set of scalar observables) that encodes an <em>ensemble average</em> over all the conformations the protein visits. SAXS measures how X-rays scatter off the protein in solution, encoding information about its overall shape and compactness as a function of momentum transfer $<span class="arithmatex">\(q\)</span>$. NMR chemical shifts report on the local electronic environment of individual atoms, sensitive to hydrogen-bonding, secondary structure, and ring currents. RDCs (Residual Dipolar Couplings) report bond-vector orientations relative to an external magnetic field.</p>
+<h3 id="why-legacy-code-was-not-differentiable">Why Legacy Code Was Not Differentiable</h3>
+<p>For decades the software that converts 3D coordinates → predicted spectra was written in Fortran 77 or C, packaged as compiled binaries with rigid I/O conventions (think Xplor-NIH, CRYSOL, SPARTA+). These programs were:</p>
+<ul>
+<li><strong>Opaque to autograd engines</strong> — no computation graph is exposed.</li>
+<li><strong>Not composable</strong> — you cannot fuse a SAXS forward pass with an NMR forward pass inside a single loss function.</li>
+<li><strong>Batch-unfriendly</strong> — running 10,000 ensemble members required launching 10,000 subprocess calls.</li>
+</ul>
+<p>DiffBiophys rewrites the physics as <strong>pure JAX kernels</strong>: every arithmetic operation is tracked by JAX's tracing engine, so gradients flow back through the physics all the way to whatever upstream parameters (neural network weights, torsion angles, latent embeddings) you care about.</p>
+<h3 id="what-nerf-is-the-robot-arm-analogy">What NeRF Is — The Robot Arm Analogy</h3>
+<p>Predicting or optimising <em>torsion angles</em> is natural for both biophysics (Ramachandran plot) and ML (bounded, periodic parameters). But loss functions almost always need <em>Cartesian coordinates</em> — distances, dot products, scattering integrals — which require converting angles to XYZ. This is exactly what robot kinematics does when it converts joint angles to end-effector position.</p>
+<p><strong>NeRF (Natural Extension Reference Frame)</strong> is the differentiable forward-kinematics algorithm for protein chains. Think of each peptide bond as a rigid segment and each $<span class="arithmatex">\(\phi\)</span>$, $<span class="arithmatex">\(\psi\)</span>$, $<span class="arithmatex">\(\omega\)</span>$ angle as a revolute joint. NeRF walks the chain bond by bond, placing each atom in the coordinate frame defined by the previous three atoms. Because the entire procedure is matrix multiplications and rotations, JAX can differentiate through it.</p>
+<h3 id="plugging-into-a-jaxpytorch-pipeline">Plugging Into a JAX/PyTorch Pipeline</h3>
+<p>DiffBiophys is designed to be a <strong>drop-in differentiable physics layer</strong>. A minimal integration looks like:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_biophys.saxs</span><span class="w"> </span><span class="kn">import</span> <span class="n">debye_saxs</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_biophys.nerf</span><span class="w"> </span><span class="kn">import</span> <span class="n">torsions_to_coords</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># coords: (N_atoms, 3) — could come from a neural network decoder</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">loss_fn</span><span class="p">(</span><span class="n">torsions</span><span class="p">,</span> <span class="n">q_vals</span><span class="p">,</span> <span class="n">I_exp</span><span class="p">):</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">coords</span>  <span class="o">=</span> <span class="n">torsions_to_coords</span><span class="p">(</span><span class="n">torsions</span><span class="p">)</span>     <span class="c1"># NeRF: angles → XYZ</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">I_pred</span>  <span class="o">=</span> <span class="n">debye_saxs</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">q_vals</span><span class="p">)</span>       <span class="c1"># Debye: XYZ → SAXS curve</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">I_pred</span> <span class="o">-</span> <span class="n">I_exp</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>     <span class="c1"># MSE / chi-squared</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="c1"># Exact gradients w.r.t. torsion angles — no finite differences</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="n">grads</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">torsions</span><span class="p">,</span> <span class="n">q_vals</span><span class="p">,</span> <span class="n">I_exp</span><span class="p">)</span>
+</code></pre></div>
+<p>For PyTorch interop, JAX arrays are exported via <code>dlpack</code> (zero-copy on GPU) or converted with <code>np.array()</code> on CPU:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Zero-copy GPU transfer from JAX → PyTorch</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">torch_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">jax_array</span><span class="p">))</span>
+</code></pre></div>
+<h3 id="concept-mapping-ml-biophysics">Concept Mapping: ML → Biophysics</h3>
+<table>
+<thead>
+<tr>
+<th>Machine Learning</th>
+<th>Biophysics Equivalent</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tensor of shape <code>(N, 3)</code></td>
+<td>Cartesian coordinates of $<span class="arithmatex">\(N\)</span>$ atoms</td>
+<td>Rows = atoms, cols = $<span class="arithmatex">\(x, y, z\)</span>$</td>
+</tr>
+<tr>
+<td>Latent vector $<span class="arithmatex">\(z\)</span>$</td>
+<td>Torsion-angle vector $<span class="arithmatex">\((\phi, \psi, \chi)\)</span>$</td>
+<td>Internal (intrinsic) coordinates</td>
+</tr>
+<tr>
+<td>Forward pass</td>
+<td>Physics forward model (Debye, Karplus, …)</td>
+<td>Maps coords → observable</td>
+</tr>
+<tr>
+<td>Loss function</td>
+<td>$<span class="arithmatex">\(\chi^2\)</span>$ / energy penalty vs. experiment</td>
+<td>Minimised during refinement</td>
+</tr>
+<tr>
+<td>Backpropagation</td>
+<td>Gradient of energy w.r.t. atomic positions</td>
+<td>Same chain rule, different domain</td>
+</tr>
+<tr>
+<td>Batching / <code>vmap</code></td>
+<td>Ensemble of conformers</td>
+<td>$<span class="arithmatex">\(N_\text{ens}\)</span>$ structures evaluated in parallel</td>
+</tr>
+<tr>
+<td>Model weights</td>
+<td>Atomic coordinates / force-field parameters</td>
+<td>The parameters being optimised</td>
+</tr>
+<tr>
+<td>Regularisation</td>
+<td>Stereochemical restraints (bond lengths, angles)</td>
+<td>Prevent unphysical geometries</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="for-structural-biologists">🧬 For Structural Biologists</h2>
+<p>You understand the physics of NMR, the Debye equation for SAXS, and the subtleties of conformational ensembles. What makes DiffBiophys different from Xplor-NIH, CNS, or Rosetta — and why should you care about "automatic differentiation"?</p>
+<h3 id="what-automatic-differentiation-actually-is">What Automatic Differentiation Actually Is</h3>
+<p>People often conflate AD with <em>numerical</em> differentiation (finite differences). They are fundamentally different:</p>
+<p><strong>Finite differences</strong> approximate the derivative:</p>
+<div class="arithmatex">\[\frac{\partial f}{\partial x} \approx \frac{f(x + \varepsilon) - f(x)}{\varepsilon}\]</div>
+<p>This requires two forward-model evaluations per parameter, is polluted by floating-point cancellation error for small $<span class="arithmatex">\(\varepsilon\)</span>$, and scales as $<span class="arithmatex">\(\mathcal{O}(N_\text{params})\)</span>$ — catastrophic for a protein with tens of thousands of atoms.</p>
+<p><strong>Automatic differentiation</strong> (specifically <em>reverse-mode AD</em>, i.e., backpropagation) computes the <em>exact</em> mathematical derivative by applying the chain rule symbolically through the computation graph. The cost is a single backward pass regardless of how many parameters you have. For a protein with 5,000 atoms (15,000 Cartesian degrees of freedom), AD computes all 15,000 partial derivatives at roughly the cost of <strong>one extra forward pass</strong>. The gradients are not approximate; they are exact to floating-point precision.</p>
+<h3 id="why-gradient-descent-beats-monte-carlo-for-high-dimensional-problems">Why Gradient Descent Beats Monte Carlo for High-Dimensional Problems</h3>
+<p>Simulated annealing and Monte Carlo methods explore conformation space by random perturbation. Their convergence rate scales poorly with dimensionality — in a space with $<span class="arithmatex">\(D\)</span>$ degrees of freedom the expected number of random steps to escape a basin grows exponentially. For small peptides this is manageable; for a 200-residue protein ensemble with 10,000 members, it becomes intractable.</p>
+<p>Gradient descent exploits the <em>local geometry</em> of the loss surface:</p>
+<div class="arithmatex">\[\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \, \nabla_{\boldsymbol{\theta}} \mathcal{L}(\boldsymbol{\theta}_t)\]</div>
+<p>The gradient $<span class="arithmatex">\(\nabla \mathcal{L}\)</span>$ points <em>directly</em> towards the steepest descent direction. Adaptive optimisers (Adam, L-BFGS) further rescale steps per parameter, making optimisation robust to ill-conditioned loss landscapes — exactly the situation in ensemble refinement where SAXS and NMR restraints have very different scales and curvatures.</p>
+<h3 id="gradient-descent-finds-local-minima-not-global-ones">Gradient descent finds local minima, not global ones.</h3>
+<p>DiffBiophys is most powerful when combined with a good initialisation (e.g., an AlphaFold prediction) or a stochastic initialisation strategy, with gradient descent performing fast, accurate local refinement.</p>
+<h4 id="the-real-world-limitation-rugged-landscapes">⛰️ The Real-World Limitation: Rugged Landscapes</h4>
+<p>Protein conformational space is notoriously "rugged." It is filled with thousands of local minima (traps) where a simple gradient descent ball will get stuck before reaching the "true" global minimum.</p>
+<p><strong>Why differentiate anyway?</strong>
+While gradients don't solve the "global search" problem on their own, they solve the "convergence" problem. Once you are in the correct "neighborhood" (e.g., via an AlphaFold model or a <code>synth-pdb</code> generated decoy), gradient descent can find the exact experimental solution 1,000x faster than Monte Carlo sampling.</p>
+<p>Additionally, experimental observables (like SAXS and RDCs) often have a <strong>smoothing effect</strong> on the landscape. Because these signals depend on the global shape of the molecule, they can "pull" the structure through small energetic bumps that would trap a purely physics-based simulation.</p>
+<h3 id="how-jax-jit-vmap-delivers-gpu-speed-for-ensembles">How JAX <code>jit</code> + <code>vmap</code> Delivers GPU Speed for Ensembles</h3>
+<p>Two JAX primitives are central to DiffBiophys performance:</p>
+<ul>
+<li>
+<p><strong><code>jit</code> (just-in-time compilation):</strong> JAX traces Python functions and compiles them to XLA (Accelerated Linear Algebra) machine code. A Debye scattering calculation that takes 40 ms in interpreted NumPy runs in &lt; 1 ms after <code>jit</code> compilation on a GPU. Compilation happens once; subsequent calls use the cached binary.</p>
+</li>
+<li>
+<p><strong><code>vmap</code> (vectorising map):</strong> This lifts a function written for a <em>single</em> structure to operate over a <em>batch</em> of structures without any explicit loop. For ensemble calculations:</p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_biophys.saxs</span><span class="w"> </span><span class="kn">import</span> <span class="n">debye_saxs</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># ensemble_coords: (N_ens, N_atoms, 3)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">batch_saxs</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">debye_saxs</span><span class="p">,</span> <span class="n">in_axes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">I_ensemble</span> <span class="o">=</span> <span class="n">batch_saxs</span><span class="p">(</span><span class="n">ensemble_coords</span><span class="p">,</span> <span class="n">q_vals</span><span class="p">)</span>   <span class="c1"># shape: (N_ens, N_q)</span>
+</code></pre></div>
+<p>On a single A100 GPU this evaluates 10,000 SAXS profiles in approximately 200 ms — work that would take hours serially in CRYSOL.</p>
+<h3 id="software-comparison">Software Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>diff-biophys</th>
+<th>Xplor-NIH</th>
+<th>Rosetta</th>
+<th>CRYSOL / ATSAS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gradient-based optimisation</td>
+<td>✅ Exact AD</td>
+<td>⚠️ Finite diff.</td>
+<td>⚠️ Finite diff.</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>GPU acceleration</td>
+<td>✅ Native XLA</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>Ensemble calculations</td>
+<td>✅ <code>vmap</code></td>
+<td>⚠️ Serial</td>
+<td>⚠️ Serial</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>Differentiable loss</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>NMR restraints</td>
+<td>✅</td>
+<td>✅</td>
+<td>⚠️ Limited</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>SAXS forward model</td>
+<td>✅ Debye</td>
+<td>⚠️ External</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Python-native API</td>
+<td>✅</td>
+<td>⚠️ Tcl/Python</td>
+<td>⚠️ C++/PyRosetta</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>Composable loss functions</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compatibility-notes">Compatibility Notes</h3>
+<p>DiffBiophys arrays are JAX <code>DeviceArray</code> objects, interoperable with the full scientific Python ecosystem:</p>
+<ul>
+<li><strong>NumPy:</strong> <code>np.array(jax_array)</code> copies to CPU. Suitable for passing results to MDAnalysis, MDTraj, or Biopython.</li>
+<li><strong>PyTorch (zero-copy):</strong> <code>torch.utils.dlpack.from_dlpack(jax.dlpack.to_dlpack(x))</code> avoids any host-side copy when both tensors live on the same GPU.</li>
+<li><strong>PDB export:</strong> <code>diff_biophys.io.write_pdb(coords, topology, path)</code> writes standard PDB files from optimised coordinates for downstream use in PyMOL, UCSF ChimeraX, or PHENIX.</li>
+</ul>
+<hr />
+<h2 id="deep-dive-into-jax">🎓 Deep Dive into JAX</h2>
+<p>To truly master differentiable biophysics, it helps to understand the engine under the hood. We recommend exploring the broader JAX ecosystem:</p>
+<h3 id="core-learning">Core Learning</h3>
+<ul>
+<li><strong><a href="https://jax.readthedocs.io/">Official JAX Documentation</a>:</strong> The source of truth for the library.</li>
+<li><strong><a href="https://jax.readthedocs.io/en/latest/jax-101/index.html">JAX 101 Tutorials</a>:</strong> A linear path from "What is JAX?" to advanced vectorization and compilation.</li>
+<li><strong><a href="https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html">Knife-Edge Performance (The Sharp Bits)</a>:</strong> Essential reading for avoiding common errors with side effects and state.</li>
+</ul>
+<h3 id="scientific-context">Scientific Context</h3>
+<ul>
+<li><strong><a href="https://arxiv.org/abs/1912.04232">JAX, M.D. (ArXiv)</a>:</strong> Learn how the concepts in <code>diff-biophys</code> apply to large-scale molecular dynamics and physics simulations.</li>
+<li><strong><a href="https://arxiv.org/abs/1502.05767">Automatic Differentiation in Machine Learning: A Survey</a>:</strong> A deep dive into the math behind the gradients we use for structural refinement.</li>
+</ul>
+<h3 id="high-level-frameworks">High-Level Frameworks</h3>
+<ul>
+<li><strong><a href="https://github.com/google-deepmind/optax">Optax</a>:</strong> The gradient processing and optimization library used in our tutorials for managing the Adam optimizer.</li>
+<li><strong><a href="https://docs.kidger.site/equinox/">Equinox</a>:</strong> Provides an elegant, class-based way to build models in JAX, making it very accessible for PyTorch users.</li>
+<li><strong><a href="https://flax.readthedocs.io/">Flax</a>:</strong> Google's flagship neural network library for JAX, ideal for building the AI models that feed into <code>diff-biophys</code> loss functions.</li>
+</ul>
+<hr />
+<h2 id="glossary">📚 Glossary</h2>
+<p><em>A plain-English reference for undergraduates. Terms are defined in the context of DiffBiophys and structural biology. Cross-references to other documentation pages are noted where relevant.</em></p>
+<hr />
+<p><strong>Automatic Differentiation (AD)</strong> — A computational technique that applies the chain rule of calculus <em>exactly</em> through a computer program, yielding analytical gradients. Unlike finite differences, AD is exact to floating-point precision and requires only a single backward pass regardless of the number of parameters. See <a href="#for-structural-biologists">For Structural Biologists</a> and <a href="../theory/">theory.md</a>.</p>
+<p><strong>Backpropagation</strong> — The specific algorithm that implements reverse-mode automatic differentiation in a computation graph. It propagates the gradient of a scalar loss backwards through each operation in sequence. In DiffBiophys, "backprop" flows through the physics forward model (e.g., the Debye equation) rather than through neural-network layers.</p>
+<p><strong>Bond Angle</strong> — The angle formed at a central atom between two covalent bonds, e.g., the N–Cα–C angle in a peptide (~111°). Bond angles are usually held near their ideal values by restraints during structure refinement. Significant deviations indicate steric strain or poor stereochemistry.</p>
+<p><strong>Bond Length</strong> — The equilibrium distance between two covalently bonded atoms (e.g., Cα–C ≈ 1.52 Å). Bond lengths are among the most tightly constrained geometric quantities in structure refinement because quantum chemistry fixes them to within a few hundredths of an ångström.</p>
+<p><strong>Cα Chemical Shift</strong> — The NMR resonance frequency of a protein's alpha-carbon, referenced to a standard (DSS at 0 ppm). Cα shifts are sensitive to backbone conformation: helical residues resonate ~3 ppm downfield and β-strand residues ~2 ppm upfield relative to random-coil values, making them reliable secondary-structure reporters. See <a href="../theory/">theory.md</a>.</p>
+<p><strong>Circular Dichroism (CD)</strong> — A spectroscopic technique measuring the differential absorption of left- versus right-circularly polarised light by a chiral molecule. Protein far-UV CD spectra (190–250 nm) report on bulk secondary-structure content (% helix, strand, coil) and provide a fast global restraint on conformational ensembles.</p>
+<p><strong>Chirality (L vs D amino acids)</strong> — The handedness of the Cα tetrahedral center. All natural amino acids are L-configured: the four substituents (H, NH₂, COOH, side chain) are arranged with a specific sense relative to the backbone. D-amino acids (mirror images) are rare in nature but can arise in Cartesian refinement when large gradients push a Cα past the L→D inversion boundary. DiffIntegrator's <code>ChiralityPenalty</code> guards against this using the signed scalar triple product <span class="arithmatex">\(\chi_i = (\vec{N}_i - \vec{CA}_i) \times (\vec{C}_i - \vec{CA}_i) \cdot (\vec{C}_{i-1} - \vec{CA}_i)\)</span>, which is negative for all L-amino acids.</p>
+<p><strong>Conformational Ensemble</strong> — A set of many different 3D structures all representing the same protein under the same solution conditions. Because proteins are dynamic, experimental NMR and SAXS observables represent <em>population-weighted averages</em> over the ensemble. DiffBiophys optimises ensemble weights and coordinates simultaneously via differentiable ensemble averaging.</p>
+<p><strong>Cryo-EM (Cryo-Electron Microscopy)</strong> — An imaging technique in which an electron beam is directed at flash-frozen protein samples, producing 2D projections that are computationally reconstructed into 3D electron-density maps. Resolutions below 2 Å are now routinely achieved. DiffBiophys can in principle compute differentiable density-map agreement scores for Cryo-EM–guided refinement.</p>
+<p><strong>Debye Formula</strong> — The foundational equation for computing a theoretical SAXS profile from atomic coordinates:</p>
+<div class="arithmatex">\[I(q) = \sum_{i} \sum_{j} f_i(q)\, f_j(q)\, \frac{\sin(q\, r_{ij})}{q\, r_{ij}}\]</div>
+<p>where $<span class="arithmatex">\(f_i(q)\)</span>$ are atomic form factors and $<span class="arithmatex">\(r_{ij}\)</span>$ are all pairwise interatomic distances. DiffBiophys implements this as a JAX-differentiable kernel. See <a href="../theory/">theory.md</a>.</p>
+<p><strong>Dihedral Angle</strong> — The angle between two planes each defined by three consecutive atoms in a four-atom chain, measured by rotation about the central bond. Backbone dihedrals $<span class="arithmatex">\(\phi\)</span>$ (C–N–Cα–C) and $<span class="arithmatex">\(\psi\)</span>$ (N–Cα–C–N) define protein secondary structure and are the primary optimisation parameters in DiffBiophys. See also <em>Torsion Angle</em> and <em>Ramachandran Plot</em>.</p>
+<p><strong>Differentiable Function</strong> — A function whose derivative exists at every point in its domain. In the context of DiffBiophys, a differentiable forward model means JAX can compute $<span class="arithmatex">\(\partial\mathcal{L}/\partial\theta\)</span>$ exactly for any parameter $<span class="arithmatex">\(\theta\)</span>$ using the chain rule, enabling gradient-based structure refinement.</p>
+<p><strong>Form Factor</strong> — The amplitude with which an atom or group of atoms scatters X-rays as a function of momentum transfer $<span class="arithmatex">\(q\)</span>$. Each element has a characteristic form factor $<span class="arithmatex">\(f(q)\)</span>$ that peaks at $<span class="arithmatex">\(q=0\)</span>$ and decreases with increasing $<span class="arithmatex">\(q\)</span>$. Atomic form factors enter directly into the Debye formula.</p>
+<p><strong>Forward Kinematics</strong> — The process of computing Cartesian positions from a set of joint angles — exactly what NeRF does for protein chains. Given $<span class="arithmatex">\(\phi, \psi\)</span>$ angles at each residue, forward kinematics places every backbone atom in 3D space. This is the differentiable building block of DiffBiophys's coordinate-generation pipeline. See <em>NeRF</em>.</p>
+<p><strong>FSC (Fourier Shell Correlation)</strong> — A resolution metric for Cryo-EM maps that measures the correlation between two independently determined half-maps in concentric shells of reciprocal space. Resolution is conventionally reported at the FSC = 0.143 threshold. DiffBiophys can compute differentiable map-model agreement scores analogous to FSC.</p>
+<p><strong>Gradient</strong> — The vector of all partial derivatives of a scalar function with respect to its inputs:</p>
+<div class="arithmatex">\[\nabla_\theta \mathcal{L} = \left(\frac{\partial \mathcal{L}}{\partial \theta_1},\, \frac{\partial \mathcal{L}}{\partial \theta_2},\, \ldots\right)\]</div>
+<p>The gradient points in the direction of steepest <em>increase</em> of $<span class="arithmatex">\(\mathcal{L}\)</span>$; gradient descent moves in the opposite direction to minimise the loss.</p>
+<p><strong>Gradient Descent</strong> — An iterative optimisation algorithm that updates parameters in the direction of the negative gradient of a loss function. Adam (Adaptive Moment estimation) and SGD (stochastic gradient descent) are the two most common variants. DiffBiophys uses gradient descent for structure refinement via the <code>optax</code> library. See <a href="#for-structural-biologists">For Structural Biologists</a>.</p>
+<p><strong>GPU (Graphics Processing Unit)</strong> — A massively parallel processor with thousands of cores optimised for floating-point matrix operations. Modern GPUs (NVIDIA A100, H100) deliver tens of teraFLOPS, enabling large protein ensemble calculations in seconds. JAX targets GPUs via the XLA compiler with no hand-written CUDA required. See <em>XLA</em>.</p>
+<p><strong>Hamiltonian</strong> — In classical mechanics, the total energy of a system (kinetic + potential). In molecular mechanics, the Hamiltonian is approximated by a force field (AMBER, CHARMM) summing bond, angle, dihedral, and non-bonded terms. DiffBiophys does not require a full force-field Hamiltonian, but physical energy terms can be added as differentiable regularisers to the loss function.</p>
+<p><strong>Hydration Shell</strong> — The ordered layer of water molecules surrounding a protein in solution, typically 1–3 Å thick and with elevated electron density relative to bulk solvent. The hydration shell contributes significantly to the low-$<span class="arithmatex">\(q\)</span>$ SAXS signal and must be modelled, typically via a contrast parameter $<span class="arithmatex">\(\delta\rho\)</span>$. DiffBiophys includes a differentiable hydration-shell correction.</p>
+<p><strong>Internal Coordinates</strong> — A description of molecular geometry using bond lengths, bond angles, and dihedral angles rather than Cartesian $<span class="arithmatex">\((x, y, z)\)</span>$ positions. Internal coordinates are more compact ($<span class="arithmatex">\(3N-6\)</span>$ values vs $<span class="arithmatex">\(3N\)</span>$) and directly interpretable in chemical terms. NeRF converts internal coordinates to Cartesian. See <em>NeRF</em> and <em>Torsion Angle</em>.</p>
+<p><strong>JAX</strong> — A Python numerical computing library from Google Research combining NumPy-compatible syntax with automatic differentiation (<code>grad</code>), just-in-time compilation to XLA (<code>jit</code>), and automatic vectorisation (<code>vmap</code>). DiffBiophys is built entirely on JAX. See <a href="https://jax.readthedocs.io">jax.readthedocs.io</a> and <a href="../">the Why JAX section</a>.</p>
+<p><strong>JIT Compilation (Just-In-Time)</strong> — A compilation strategy in which code is compiled to machine instructions at the moment of first call rather than ahead of time. JAX's <code>@jax.jit</code> decorator traces a Python function, converts it to an XLA computation graph, and emits optimised GPU/CPU binaries. Subsequent calls reuse the compiled binary, essentially eliminating Python overhead.</p>
+<p><strong>Karplus Equation</strong> — An empirical relationship between an NMR scalar J-coupling constant (Hz) and a dihedral angle $<span class="arithmatex">\(\theta\)</span>$:</p>
+<div class="arithmatex">\[J = A\cos^2\!\theta + B\cos\theta + C\]</div>
+<p>where $<span class="arithmatex">\(A\)</span>$, $<span class="arithmatex">\(B\)</span>$, $<span class="arithmatex">\(C\)</span>$ are atom-type-dependent constants determined by quantum-chemical calculations. DiffBiophys implements differentiable Karplus equations for backbone $<span class="arithmatex">\({}^3J_{HN\text{-}H\alpha}\)</span>$ couplings and sidechain $<span class="arithmatex">\(\chi\)</span>$-angle couplings. See <a href="../theory/">theory.md</a>.</p>
+<p><strong>Kabsch Algorithm</strong> — An algorithm that finds the optimal rigid-body rotation (and optionally translation) to superimpose two corresponding sets of 3D points, minimising their RMSD. DiffBiophys provides a differentiable Kabsch implementation used for ensemble alignment and RMSD-based loss terms.</p>
+<p><strong>Loss Function</strong> — A scalar-valued function measuring how poorly a model's predictions match experimental data; the quantity that gradient descent minimises. In DiffBiophys a typical loss is:</p>
+<div class="arithmatex">\[\mathcal{L} = w_\text{SAXS}\,\chi^2_\text{SAXS} + w_\text{NMR}\,\chi^2_\text{NMR} + w_\text{stereo}\,E_\text{stereo}\]</div>
+<p>where the weights $<span class="arithmatex">\(w\)</span>$ balance the contribution of each restraint type.</p>
+<p><strong>Magic Angle</strong> — The angle $<span class="arithmatex">\(\theta_m = \arccos(1/\sqrt{3}) \approx 54.74°\)</span>$ at which the function $<span class="arithmatex">\((3\cos^2\!\theta - 1)\)</span>$ equals zero. In solid-state NMR, spinning samples at the magic angle removes broadening from dipolar couplings and chemical-shift anisotropy. In solution NMR, the magic angle appears in the angular dependence of RDCs and quadrupolar couplings.</p>
+<p><strong>Mean Squared Error (MSE)</strong> — The average squared difference between predicted and observed values:</p>
+<div class="arithmatex">\[\text{MSE} = \frac{1}{N}\sum_{i=1}^N \bigl(\hat{y}_i - y_i\bigr)^2\]</div>
+<p>MSE is differentiable everywhere and is the default loss metric in DiffBiophys example notebooks. In SAXS refinement a noise-weighted variant gives the standard $<span class="arithmatex">\(\chi^2\)</span>$ statistic.</p>
+<p><strong>NeRF (Natural Extension Reference Frame)</strong> — A differentiable algorithm that converts a chain of bond lengths, bond angles, and dihedral angles into 3D Cartesian atomic positions using successive rotation-matrix operations. Analogous to forward kinematics in robotics: each amino acid's backbone is like a rigid link connected by revolute joints. NeRF is the core coordinate-building primitive in DiffBiophys. See <a href="#for-machine-learning-engineers">For ML Engineers</a> and <a href="../theory/">theory.md</a>.</p>
+<p><strong>NMR (Nuclear Magnetic Resonance)</strong> — A spectroscopic technique exploiting the quantum-mechanical spin of atomic nuclei (<span class="arithmatex">\({}^1\)</span>H, <span class="arithmatex">\({}^{13}\)</span>C, <span class="arithmatex">\({}^{15}\)</span>N) to report on molecular structure and dynamics in solution. NMR provides residue-level observables — chemical shifts, J-couplings, NOEs, RDCs — all of which DiffBiophys can predict from 3D coordinates and differentiate.</p>
+<p><strong>NOE (Nuclear Overhauser Effect)</strong> — A through-space magnetization transfer between two protons closer than ~5–6 Å.  NOE intensities decay as <span class="arithmatex">\(1/r^6\)</span>, providing distance bounds on inter-proton separations.  In DiffIntegrator, these are encoded as flat-bottomed harmonic restraints in <code>NOELoss</code>: zero energy within <span class="arithmatex">\([d^\text{lower}, d^\text{upper}]\)</span>, quadratic outside.  NOE-derived distance restraints are the most information-dense NMR observable for determining protein fold topology.</p>
+<p><strong>Optimizer (Adam / SGD)</strong> — An algorithm that updates model parameters using gradient information. <strong>SGD</strong> applies a uniform learning rate $<span class="arithmatex">\(\eta\)</span>$ to all parameters. <strong>Adam</strong> maintains per-parameter estimates of the first and second moments of the gradient, adapting the effective step size and converging faster on heterogeneous loss landscapes. DiffBiophys uses <code>optax.adam</code> by default.</p>
+<p><strong>Pair-Distance Distribution P(r)</strong> — The histogram of all pairwise interatomic distances in a molecule, related to the SAXS intensity by a Fourier-sine transform:</p>
+<div class="arithmatex">\[I(q) = 4\pi \int_0^{D_\text{max}} P(r)\, \frac{\sin(qr)}{qr}\, \mathrm{d}r\]</div>
+<p>The peak of $<span class="arithmatex">\(P(r)\)</span>$ gives the most probable distance; $<span class="arithmatex">\(D_\text{max}\)</span>$ is the maximum particle dimension. DiffBiophys computes $<span class="arithmatex">\(P(r)\)</span>$ differentiably from atomic coordinates.</p>
+<p><strong>Parameter</strong> — Any numerical quantity adjusted during optimisation. In structure refinement, parameters are typically atomic coordinates or torsion angles; in neural networks they are weights and biases. DiffBiophys differentiates the loss with respect to whichever leaf variables <code>jax.grad</code> is given.</p>
+<p><strong>Ramachandran Plot</strong> — A 2D scatter plot of backbone dihedral angles $<span class="arithmatex">\((\phi, \psi)\)</span>$ for every residue in a protein. Allowed regions correspond to geometrically favourable secondary structures (helix ~−60°/−40°; strand ~−120°/120°); disallowed regions indicate steric clashes. DiffBiophys can add a differentiable Ramachandran prior as a regularisation term.</p>
+<p><strong>Random Coil</strong> — The idealised disordered state of a polymer in which each bond rotates freely, producing a Gaussian distribution of end-to-end distances. In NMR, tabulated random-coil chemical shift values (one per residue type) serve as the reference from which secondary-structure-induced deviations (secondary chemical shifts) are measured.</p>
+<p><strong>RDC (Residual Dipolar Coupling)</strong> — An NMR observable arising when a protein is weakly aligned in an anisotropic medium (liquid crystal, stretched gel). RDCs report on the time-averaged orientation of internuclear bond vectors relative to the magnetic field and are sensitive to global fold topology. DiffBiophys computes RDCs from coordinates and the Saupe tensor:</p>
+<div class="arithmatex">\[D_{HN} = D_a\!\left[(3\cos^2\!\theta - 1) + \tfrac{3}{2}\eta\sin^2\!\theta\cos 2\phi\right]\]</div>
+<p>See also <em>Saupe Tensor</em>. See <a href="../theory/">theory.md</a> for derivation.</p>
+<p><strong>Radius of Gyration ($<span class="arithmatex">\(R_g\)</span>$)</strong> — The root-mean-square distance of atoms from the protein's centre of mass, weighted by scattering length:</p>
+<div class="arithmatex">\[R_g^2 = \frac{\sum_i f_i\,|\mathbf{r}_i - \bar{\mathbf{r}}|^2}{\sum_i f_i}\]</div>
+<p>$<span class="arithmatex">\(R_g\)</span>$ is measurable from the low-$<span class="arithmatex">\(q\)</span>$ Guinier region of a SAXS curve and is a primary target observable in DiffBiophys SAXS refinement workflows.</p>
+<p><strong>Ring Current Shift</strong> — A contribution to NMR proton chemical shifts arising from the anisotropic magnetic field induced by aromatic rings (Phe, Tyr, Trp, His). Protons above or below the ring plane experience shielding (upfield shift); those in the plane experience deshielding. DiffBiophys models ring current effects using the Haigh–Mallion formalism, fully differentiable with respect to atomic positions.</p>
+<p><strong>Rosetta</strong> — A widely used software suite for protein structure prediction and design, built on a physics-based energy function and Monte Carlo sampling. Rosetta is not natively differentiable, although PyRosetta exposes a Python API. The two tools are complementary: Rosetta for diverse global sampling, DiffBiophys for fast, gradient-based local refinement.</p>
+<p><strong>SAXS (Small-Angle X-ray Scattering)</strong> — A solution-state experiment in which a monochromatic X-ray beam illuminates a protein solution and scattered photon intensity is recorded as a function of momentum transfer $<span class="arithmatex">\(q = 4\pi\sin\theta/\lambda\)</span>$. SAXS requires no crystals, is sensitive to overall shape, size, and flexibility, and is the primary long-range restraint implemented in DiffBiophys. See <a href="../theory/">theory.md</a> and <em>Debye Formula</em>.</p>
+<p><strong>Saupe Tensor</strong> — A $<span class="arithmatex">\(3\times 3\)</span>$ symmetric traceless matrix $<span class="arithmatex">\(\mathbf{S}\)</span>$ describing the degree and symmetry of molecular alignment in an anisotropic medium. The five independent elements of $<span class="arithmatex">\(\mathbf{S}\)</span>$ (equivalently the axial component $<span class="arithmatex">\(D_a\)</span>$, rhombicity $<span class="arithmatex">\(\eta\)</span>$, and three Euler angles) uniquely determine all RDC observables for a given structure. Fitting $<span class="arithmatex">\(\mathbf{S}\)</span>$ to experimental RDCs is a core inverse problem that DiffBiophys solves via gradient descent.</p>
+<p><strong>Secondary Structure</strong> — The local, regular folding patterns of a polypeptide chain, stabilised by hydrogen bonds. The three principal types are: <strong>α-helix</strong> (right-handed, 3.6 residues/turn, $<span class="arithmatex">\(\phi \approx -60°\)</span>$, $<span class="arithmatex">\(\psi \approx -40°\)</span>$), <strong>β-strand</strong> (extended, $<span class="arithmatex">\(\phi \approx -120°\)</span>$, $<span class="arithmatex">\(\psi \approx 120°\)</span>$), and <strong>random coil</strong> (disordered). Secondary structure is strongly correlated with backbone dihedral angles and NMR chemical shifts.</p>
+<p><strong>Simulated Annealing</strong> — A stochastic global optimisation algorithm that accepts uphill moves with probability $<span class="arithmatex">\(\exp(-\Delta E / T)\)</span>$, where the fictitious temperature $<span class="arithmatex">\(T\)</span>$ is slowly decreased ("annealed"). This allows escape from local minima. However, simulated annealing scales poorly with dimensionality and is orders of magnitude slower than gradient descent for high-dimensional ensemble refinement.</p>
+<p><strong>Softmax</strong> — A differentiable function mapping a real-valued vector to a probability simplex:</p>
+<div class="arithmatex">\[\operatorname{softmax}(\mathbf{z})_i = \frac{e^{z_i}}{\sum_j e^{z_j}}\]</div>
+<p>In DiffBiophys, softmax is used to parameterise conformer weights in ensemble averaging: weights $<span class="arithmatex">\(w_k = \operatorname{softmax}(\mathbf{a})_k\)</span>$ automatically satisfy $<span class="arithmatex">\(\sum_k w_k = 1\)</span>$ and $<span class="arithmatex">\(w_k &gt; 0\)</span>$ throughout gradient-descent optimisation.</p>
+<p><strong>Structure Refinement</strong> — The computational process of adjusting a protein model to improve agreement with experimental data while maintaining chemically reasonable geometry. DiffBiophys performs differentiable structure refinement using gradient descent, replacing the Monte Carlo or molecular dynamics protocols used by traditional software packages.</p>
+<p><strong>Tensor</strong> — In the ML sense, a multi-dimensional array of numbers (generalisation of scalars, vectors, and matrices). In DiffBiophys, a tensor of shape <code>(N_atoms, 3)</code> stores Cartesian coordinates. In the physics sense, a tensor is a geometric object whose components transform covariantly under rotations; the Saupe tensor is a rank-2 physical tensor.</p>
+<p><strong>Torsion Angle</strong> — Synonym for <em>dihedral angle</em>: the angle of rotation about a chemical bond defined by four consecutive bonded atoms. Backbone torsion angles $<span class="arithmatex">\(\phi\)</span>$ and $<span class="arithmatex">\(\psi\)</span>$ are the primary internal degrees of freedom of a protein and are the natural parameters for DiffBiophys optimisation when working in internal-coordinate space.</p>
+<p><strong>Transition Dipole</strong> — A quantum-mechanical quantity describing the direction and magnitude of the oscillating electric dipole moment during an electronic or vibrational transition. Transition dipoles determine orientation-dependent absorption (e.g., in membrane proteins or aligned samples) and are relevant to DiffBiophys's circular dichroism forward model.</p>
+<p><strong>vmap</strong> — JAX's automatic vectorisation transformation. <code>jax.vmap(f)</code> converts a function <code>f</code> operating on a single input into one that operates on a batch of inputs in parallel, without any explicit loop and with no penalty for the vectorisation itself. In DiffBiophys, <code>vmap</code> is the key primitive for efficient ensemble calculations: it evaluates thousands of conformers simultaneously on a GPU in a single kernel launch. See <a href="#for-structural-biologists">For Structural Biologists</a>.</p>
+<p><strong>XLA (Accelerated Linear Algebra)</strong> — A domain-specific compiler for linear algebra operations developed at Google. JAX compiles computation graphs to XLA, which generates highly optimised machine code for CPUs, NVIDIA GPUs (via CUDA/cuBLAS), and Google TPUs. XLA enables DiffBiophys kernels to achieve near-peak hardware throughput without any hand-written low-level code.</p>
+<hr />
+<p><em>Last updated: 2026-06. For corrections or additions to the Glossary, please open an issue on the <a href="https://github.com/diff-biophys/diff-biophys">GitHub repository</a>.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

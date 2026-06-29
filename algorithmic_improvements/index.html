@@ -1,0 +1,1958 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Differentiable biophysical modeling in JAX">
+      
+      
+        <meta name="author" content="George Elkins">
+      
+      
+        <link rel="canonical" href="https://elkins-lab.github.io/diff-integrator/algorithmic_improvements/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Algorithmic Improvements & Known Limitations - DiffIntegrator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#algorithmic-improvements-known-limitations" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DiffIntegrator" class="md-header__button md-logo" aria-label="DiffIntegrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DiffIntegrator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Algorithmic Improvements &amp; Known Limitations
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts & Context
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../use_cases/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Use Cases
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../theory/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Core Theory
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/loss/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/01_hello_gradient_descent.ipynb" class="md-tabs__link">
+          
+  
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/refinement/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DiffIntegrator" class="md-nav__button md-logo" aria-label="DiffIntegrator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DiffIntegrator
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts & Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use_cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../theory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Theory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/loss/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loss & Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/optimizer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/schedules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schedules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/saxs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAXS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/nmr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NMR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/cd_and_cryoem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CD & Cryo-EM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/01_hello_gradient_descent.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 · Hello, Gradient Descent!
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/02_nmr_fundamentals.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 · NMR Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://colab.research.google.com/github/elkins-lab/diff-integrator/blob/main/examples/interactive_tutorials/03_cd_spectroscopy.ipynb" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 · CD Spectroscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/refinement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Refinement Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-nerf-geometric-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. NeRF Geometric Drift
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. NeRF Geometric Drift">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#impact-on-benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Impact on benchmarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-solutions-not-yet-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed solutions (not yet implemented)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-geometry-restraint-competing-with-experimental-gradients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Geometry Restraint Competing with Experimental Gradients
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Geometry Restraint Competing with Experimental Gradients">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-is_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solution-annealed-geometry-weight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution: Annealed Geometry Weight
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Solution: Annealed Geometry Weight">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exponentialdecayschedule-diff_integratorschedulespy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ExponentialDecaySchedule (diff_integrator/schedules.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weight_schedules-in-integrativerefinerrun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        weight_schedules in IntegrativeRefiner.run()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-for-new-benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation for new benchmarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-rdc-overfitting-for-underdetermined-media" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. RDC Overfitting for Underdetermined Media
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. RDC Overfitting for Underdetermined Media">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-is_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#current-mitigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current mitigation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-practice-minimum-overdetermination-ratio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best practice: minimum overdetermination ratio
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed solutions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-sequence-independent-ramachandran-prior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Sequence-Independent Ramachandran Prior
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Sequence-Independent Ramachandran Prior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-is_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proposed-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposed solution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-diff-integrator-011" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation (diff-integrator ≥ 0.1.1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-cartesian-bond-angle-penalty-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Cartesian + Bond-Angle Penalty (implemented ✅)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Cartesian + Bond-Angle Penalty (implemented ✅)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-nerf-drift-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The NeRF drift problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solution-bondlengthpenalty-bondanglepenalty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution: BondLengthPenalty + BondAnglePenalty
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hr2876b-benchmark-results-2025-06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HR2876B benchmark results (2025-06)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-future-directions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Future Directions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-per-term-early-stopping-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Per-Term Early Stopping (implemented ✅)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Per-Term Early Stopping (implemented ✅)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Motivation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-refinementresult-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New RefinementResult fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hr2876b-cartesian-benchmark-results-2025-06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HR2876B Cartesian benchmark results (2025-06)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="algorithmic-improvements-known-limitations">Algorithmic Improvements &amp; Known Limitations</h1>
+<p>This document catalogues the known limitations of <code>diff-integrator</code>'s current
+implementation, the algorithmic approaches used to address them, and open avenues
+for future improvement.  Each limitation is linked to the benchmark that
+demonstrates it most clearly.</p>
+<hr />
+<h2 id="1-nerf-geometric-drift">1. NeRF Geometric Drift</h2>
+<h3 id="what-it-is">What it is</h3>
+<p><code>diff-integrator</code> parameterises backbone conformation using <strong>dihedral angles (φ,
+ψ)</strong> and reconstructs Cartesian coordinates via the <strong>NeRF</strong> (Natural Extension
+Reference Frame) algorithm.  NeRF builds a chain sequentially, positioning each
+residue relative to the previous three atoms using ideal peptide bond lengths and
+angles.</p>
+<p>The critical limitation is that NeRF uses <em>idealised</em> rather than <em>actual</em> bond
+geometry.  Every deviation of the real PDB structure from ideal geometry compounds
+along the chain, producing a starting backbone that may already differ
+significantly from the raw PDB coordinates.  For <strong>HR2876B (107 residues)</strong> this
+drift is approximately <strong>14 Å</strong> (Cα RMSD against raw PDB model 1).</p>
+<h3 id="impact-on-benchmarks">Impact on benchmarks</h3>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th>Residues</th>
+<th>NeRF drift (NeRF start vs. raw PDB)</th>
+<th>Structural RMSD (NeRF start vs. final)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2KZV</td>
+<td>92</td>
+<td>~2–3 Å</td>
+<td>1.6 Å</td>
+</tr>
+<tr>
+<td>GmR58A</td>
+<td>122</td>
+<td>~3–5 Å</td>
+<td>2.1 Å</td>
+</tr>
+<tr>
+<td>HR2876B</td>
+<td>107</td>
+<td>~14 Å</td>
+<td>6.4 Å</td>
+</tr>
+</tbody>
+</table>
+<h3 id="proposed-solutions-not-yet-implemented">Proposed solutions (not yet implemented)</h3>
+<ol>
+<li><strong>Anchored-segment NeRF</strong> — Split the chain into independently-anchored
+   segments (every 20–30 residues), bounding drift within each segment.</li>
+<li><strong>Cartesian parameterisation + bond/angle penalties</strong> — Optimise directly in
+   Cartesian space with harmonic restraints on bond lengths and angles via
+   <code>GeometryLoss</code>.  The <code>bonds</code> and <code>ideal_bond_lengths</code> fields already exist in
+   <a href="../diff_integrator/terms/geometry.py"><code>GeometryLoss</code></a>; they need only be
+   populated with pre-computed ideal values.</li>
+<li><strong>Redundant internal coordinates</strong> — Denavit-Hartenberg frames with periodic
+   overlap corrections (as used by OpenMM's BAT module).</li>
+</ol>
+<hr />
+<h2 id="2-geometry-restraint-competing-with-experimental-gradients">2. Geometry Restraint Competing with Experimental Gradients</h2>
+<h3 id="what-it-is_1">What it is</h3>
+<p>The <code>GeometryLoss</code> harmonic anchor (a mean squared distance from the starting
+coordinates) is essential for preventing structural unravelling under the
+degenerate RDC or chemical-shift potential.  However, if the geometry weight
+equals the experimental term weights, the two competing forces cancel and very
+little net improvement occurs.</p>
+<p>The original GmR58A shift-only benchmark showed only <strong>Δ = −0.001 ppm</strong> improvement
+with equal weights (<code>weight_geometry = weight_shifts = 1.0</code>).</p>
+<h3 id="solution-annealed-geometry-weight">Solution: Annealed Geometry Weight</h3>
+<p>The key insight is that a <strong>strong geometry anchor is most needed in the early
+epochs</strong>, when RDC tensors are poorly estimated and chemical-shift gradients
+point in unreliable directions.  As the optimization matures and tensors
+stabilise, the anchor can be progressively relaxed to let experimental
+gradients dominate.</p>
+<p><code>diff-integrator</code> implements this via two new components:</p>
+<h4 id="exponentialdecayschedule-diff_integratorschedulespy"><code>ExponentialDecaySchedule</code> (<code>diff_integrator/schedules.py</code>)</h4>
+<p>Computes a weight that decreases from <code>initial_weight</code> toward <code>final_weight</code>
+with time constant <code>decay_epochs</code>:</p>
+<div class="arithmatex">\[w(t) = w_f + (w_i - w_f)\,e^{-t/\tau}\]</div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_integrator.schedules</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExponentialDecaySchedule</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">schedule</span> <span class="o">=</span> <span class="n">ExponentialDecaySchedule</span><span class="p">(</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">initial_weight</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>   <span class="c1"># Strong anchor at epoch 0</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">final_weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>      <span class="c1"># Relaxed anchor at convergence</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">decay_epochs</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>      <span class="c1"># Time constant in epochs</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
+</code></pre></div>
+<h4 id="weight_schedules-in-integrativerefinerrun"><code>weight_schedules</code> in <code>IntegrativeRefiner.run()</code></h4>
+<p>Any <code>LossTerm</code> in the <code>JointLoss</code> can be assigned a schedule by term index:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">refiner</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">init_params</span><span class="o">=...</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">weight_schedules</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="n">schedule</span><span class="p">},</span>  <span class="c1"># Index 0 = GeometryLoss</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Inspect the weight history</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">weight_history</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># List of weight values per epoch</span>
+</code></pre></div>
+<p>The weight applied at each epoch is recorded in <code>RefinementResult.weight_history</code>
+for full reproducibility and visualisation.</p>
+<h4 id="recommendation-for-new-benchmarks">Recommendation for new benchmarks</h4>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Geometry weight</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Epochs 0–100</td>
+<td>~10</td>
+<td>Prevent early unravelling while tensors are poor</td>
+</tr>
+<tr>
+<td>Epochs 100–300</td>
+<td>Decaying</td>
+<td>Allow experimental gradients increasing influence</td>
+</tr>
+<tr>
+<td>Epochs 300+</td>
+<td>~0.1</td>
+<td>Experimental gradients dominate</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-rdc-overfitting-for-underdetermined-media">3. RDC Overfitting for Underdetermined Media</h2>
+<h3 id="what-it-is_2">What it is</h3>
+<p>The Saupe alignment tensor has <strong>5 free parameters</strong>.  When the number of
+measured RDCs is less than ~3× the tensor parameters, the optimizer can find
+distortions of the backbone that satisfy the RDCs without genuine structural
+improvement — <strong>overfitting via tensor degeneracy</strong>.</p>
+<p>The 2KZV benchmark exhibits this: the PEG medium has only 16 RDCs (ratio 3.2×),
+and the final Q(PEG) = 0.047 is far below the published NMR medoid (0.36),
+confirming the optimizer is exploiting tensor degeneracy rather than improving the
+structure.</p>
+<h3 id="current-mitigation">Current mitigation</h3>
+<p><code>FixedTensorRDCLoss</code> prevents the optimizer from differentiating <em>through</em> the
+tensor fit (via <code>jax.lax.stop_gradient</code>), so the tensor itself cannot be driven
+to degenerate values.  However, small backbone distortions can still satisfy
+under-determined RDC constraints.</p>
+<h3 id="best-practice-minimum-overdetermination-ratio">Best practice: minimum overdetermination ratio</h3>
+<table>
+<thead>
+<tr>
+<th>Ratio (n_RDCs / 5)</th>
+<th>Reliability</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt; 3×</td>
+<td>Poor</td>
+<td>Do not use as a refinement term</td>
+</tr>
+<tr>
+<td>3–5×</td>
+<td>Marginal</td>
+<td>Use with caution; monitor for overfitting</td>
+</tr>
+<tr>
+<td>&gt; 8×</td>
+<td>Reliable</td>
+<td>Use freely</td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>GmR58A full-RDC benchmark</strong> demonstrates the reliable regime: all three
+media have ratios of 8.6×, 11.8×, and 10.6×.</p>
+<h3 id="proposed-solutions">Proposed solutions</h3>
+<p><strong>1. RDC cross-validation (implemented ✅)</strong></p>
+<p>Hold back a fraction of measurements as a validation set; monitor validation Q
+independently from training Q.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_integrator.terms.nmr</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_rdc_cv_refinement_fns</span><span class="p">,</span> <span class="n">FixedTensorRDCLoss</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">loss_fn</span><span class="p">,</span> <span class="n">q_eval_fn</span><span class="p">,</span> <span class="n">make_tensor_fn</span><span class="p">,</span> <span class="n">val_q_fn</span><span class="p">,</span> <span class="n">n_train</span><span class="p">,</span> <span class="n">n_val</span> <span class="o">=</span> \
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">make_rdc_cv_refinement_fns</span><span class="p">(</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="n">rdc</span><span class="p">[</span><span class="s2">&quot;res_id&quot;</span><span class="p">],</span> <span class="n">rdc</span><span class="p">[</span><span class="s2">&quot;rdc&quot;</span><span class="p">],</span> <span class="n">res_ids</span><span class="p">,</span> <span class="n">cv_fraction</span><span class="o">=</span><span class="mf">0.2</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="p">)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">term</span> <span class="o">=</span> <span class="n">FixedTensorRDCLoss</span><span class="p">(</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">loss_fn</span><span class="o">=</span><span class="n">loss_fn</span><span class="p">,</span> <span class="n">make_tensor_fn</span><span class="o">=</span><span class="n">make_tensor_fn</span><span class="p">,</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">n_rdcs</span><span class="o">=</span><span class="n">n_train</span><span class="p">,</span> <span class="n">val_q_eval_fn</span><span class="o">=</span><span class="n">val_q_fn</span><span class="p">,</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>evaluate_validation_q(coords)</code> returns the Q-factor on held-out measurements
+using the current training-fitted tensor.  If training Q drops while validation
+Q stays flat or rises, overfitting is occurring.</p>
+<p><strong>2KZV experiment (2025-06)</strong>: With PAG cross-validation (18 train / 5 held-out
+RDCs) the training Q improved from 0.309 → 0.298 (−4%) while the validation Q
+<em>worsened</em> from 0.309 → 0.471 (+52%).  This definitively shows that at ratio
+3.6×, the PAG medium is too underdetermined for reliable structural improvement.
+Without the CV split this overfitting would have been invisible.</p>
+<p><strong>2. Auto-weight by overdetermination ratio (implemented ✅)</strong></p>
+<p>Scale RDC term weight proportionally to <code>n_train_rdcs / (5 × 10)</code>, automatically
+down-weighting marginal media and up-weighting well-determined ones.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">weight</span> <span class="o">=</span> <span class="n">rdc_term</span><span class="o">.</span><span class="n">suggested_weight</span><span class="p">(</span><span class="n">base_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># e.g. PAG (ratio 3.6×): weight = 0.36</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1">#      PEG (ratio 3.2×): weight = 0.32</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1">#      GmR58A L1 (ratio 8.6×): weight = 0.86</span>
+</code></pre></div>
+<p>Result is clamped to <code>[0.1 × base, 2.0 × base]</code>.</p>
+<p><strong>3. Regularised tensor fitting</strong> — Tikhonov penalty on tensor magnitude
+during <code>fit_saupe_tensor</code> (requires change in <code>diff_biophys</code>, not yet implemented).</p>
+<hr />
+<h2 id="4-sequence-independent-ramachandran-prior">4. Sequence-Independent Ramachandran Prior</h2>
+<h3 id="what-it-is_3">What it is</h3>
+<p><a href="../diff_integrator/terms/ramachandran.py"><code>RamachandranLoss</code></a> penalises φ/ψ
+pairs that lie far from three canonical basins (α-helix, β-strand, left-handed
+α).  The basins are <strong>the same for all residues</strong>, ignoring the well-documented
+residue-type-specific distributions:</p>
+<ul>
+<li><strong>Glycine</strong>: No Cβ, so essentially the entire Ramachandran plot is accessible.</li>
+<li><strong>Proline</strong>: Restricted to cis/trans ω; φ is confined to ~−75° ± 25°.</li>
+<li><strong>Pre-proline</strong>: Shifted β-strand basin.</li>
+<li><strong>Alanine, Val, Ile</strong>: Narrow α-helix and β-strand basins.</li>
+</ul>
+<h3 id="proposed-solution">Proposed solution</h3>
+<p>A <code>residue_types</code> parameter accepting a sequence of amino acid codes, with
+per-residue basin centres and widths from a lookup table.  The MolProbity
+Ramachandran distributions are freely available and have been encoded as
+a static dictionary in <code>diff_integrator/terms/ramachandran.py</code>.</p>
+<h3 id="implementation-diff-integrator-011">Implementation (diff-integrator ≥ 0.1.1)</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_integrator.terms.ramachandran</span><span class="w"> </span><span class="kn">import</span> <span class="n">RamachandranLoss</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Sequence-aware mode: per-residue basins from the MolProbity lookup table</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">loss</span> <span class="o">=</span> <span class="n">RamachandranLoss</span><span class="p">(</span><span class="n">residue_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ALA&quot;</span><span class="p">,</span> <span class="s2">&quot;GLY&quot;</span><span class="p">,</span> <span class="s2">&quot;PRO&quot;</span><span class="p">,</span> <span class="s2">&quot;VAL&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span>
+</code></pre></div>
+<p>Key improvements:</p>
+<table>
+<thead>
+<tr>
+<th>Residue</th>
+<th>Basins</th>
+<th>σ</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default (all others)</td>
+<td>α, β, L-α (3)</td>
+<td>0.5</td>
+<td>Standard Ramachandran</td>
+</tr>
+<tr>
+<td><strong>Gly</strong></td>
+<td>α, β, L-α, ε/mirror-β (4)</td>
+<td><strong>1.0</strong></td>
+<td>No Cβ → broader &amp; 4th basin</td>
+</tr>
+<tr>
+<td><strong>Pro</strong></td>
+<td>down pucker, up pucker (2)</td>
+<td><strong>0.35</strong></td>
+<td>Ring-constrained φ ≈ −65°</td>
+</tr>
+</tbody>
+</table>
+<p>The ε-basin for Gly (φ ≈ +60°, ψ ≈ −120°) is unique to glycine and was
+previously penalised as "forbidden" — causing the optimizer to push Gly residues
+into sterically inappropriate conformations. The narrow Pro basins prevent the
+optimizer from exploring physically inaccessible φ values.</p>
+<hr />
+<h2 id="4-cartesian-bond-angle-penalty-implemented">4. Cartesian + Bond-Angle Penalty (implemented ✅)</h2>
+<p>Optimise directly in Cartesian coordinate space instead of over backbone (φ, ψ)
+dihedral angles.  Bond-length and bond-angle penalties replace the hard NeRF
+geometric constraints with soft harmonic restraints.</p>
+<h3 id="the-nerf-drift-problem">The NeRF drift problem</h3>
+<p>The NeRF backbone builder starts from a 3-atom seed and propagates ideal
+bond lengths and angles along the chain.  For long proteins (&gt;50 residues),
+float32 accumulation causes the NeRF-rebuilt backbone to diverge from the
+raw PDB coordinates.  For HR2876B (107 residues) this drift is approximately
+<strong>14 Å</strong>, meaning the optimizer starts from a structure qualitatively
+different from the real NMR model.</p>
+<h3 id="solution-bondlengthpenalty-bondanglepenalty">Solution: BondLengthPenalty + BondAnglePenalty</h3>
+<p>New module <code>diff_integrator/terms/bond_geometry.py</code> provides:</p>
+<ul>
+<li><code>BondLengthPenalty</code> — harmonic MSE on backbone bond lengths</li>
+<li><code>BondAnglePenalty</code> — harmonic MSE on backbone bond angles (arccos-safe)</li>
+<li><code>make_backbone_bond_geometry(n_residues)</code> — factory pre-populated with
+  Engh &amp; Huber (1991) ideal values for all N–CA–C backbone bonds/angles</li>
+</ul>
+<p>Also added <code>CartesianCAShiftLoss</code> to <code>diff_integrator/terms/chemical_shifts.py</code>,
+which extracts φ/ψ torsion angles from the current Cartesian coordinates via
+<code>compute_phi_psi(coords)</code> and evaluates the chemical shift RMSD.  This makes
+the gradient <code>shift_loss → φ/ψ(coords) → coords</code> fully differentiable.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_integrator.terms.bond_geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_backbone_bond_geometry</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_integrator.terms.chemical_shifts</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartesianCAShiftLoss</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_integrator.terms.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeometryLoss</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">bond_pen</span><span class="p">,</span> <span class="n">angle_pen</span> <span class="o">=</span> <span class="n">make_backbone_bond_geometry</span><span class="p">(</span><span class="n">n_residues</span><span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">ca_loss</span> <span class="o">=</span> <span class="n">CartesianCAShiftLoss</span><span class="p">(</span><span class="n">exp_res_ids</span><span class="p">,</span> <span class="n">exp_shifts</span><span class="p">,</span> <span class="n">res_ids</span><span class="p">,</span> <span class="n">res_names</span><span class="p">)</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">anchor</span>  <span class="o">=</span> <span class="n">GeometryLoss</span><span class="p">(</span><span class="n">target_coords</span><span class="o">=</span><span class="n">pdb_coords</span><span class="p">,</span> <span class="n">target_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">joint_loss</span> <span class="o">=</span> <span class="n">JointLoss</span><span class="p">([</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="p">(</span><span class="n">anchor</span><span class="p">,</span>   <span class="mf">10.0</span><span class="p">),</span>   <span class="c1"># annealed 10→0.1 over τ=100 epochs</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="p">(</span><span class="n">ca_loss</span><span class="p">,</span>  <span class="mf">1.0</span><span class="p">),</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="p">(</span><span class="n">bond_pen</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">),</span>   <span class="c1"># stiff bonds</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="p">(</span><span class="n">angle_pen</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">),</span>  <span class="c1"># softer angles</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="p">])</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1"># Cartesian: params ARE coords; kinematics_fn=None → identity</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="n">result</span> <span class="o">=</span> <span class="n">IntegrativeRefiner</span><span class="p">(</span><span class="n">joint_loss</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    <span class="n">init_params</span><span class="o">=</span><span class="n">pdb_backbone_coords</span><span class="p">,</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    <span class="n">kinematics_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    <span class="n">weight_schedules</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="n">anchor_schedule</span><span class="p">},</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="hr2876b-benchmark-results-2025-06">HR2876B benchmark results (2025-06)</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>NeRF</th>
+<th><strong>Cartesian</strong></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Starting coords</td>
+<td>NeRF-rebuilt (14 Å drift)</td>
+<td>Raw PDB</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Δ Cα RMSD</td>
+<td>−0.011 ppm</td>
+<td><strong>−0.144 ppm</strong></td>
+<td><strong>13×</strong></td>
+</tr>
+<tr>
+<td>Structural drift</td>
+<td>6.356 Å</td>
+<td><strong>0.211 Å</strong></td>
+<td>30× less</td>
+</tr>
+<tr>
+<td>Bond RMSD (final)</td>
+<td>0 (hard)</td>
+<td><strong>0.0010 Å</strong> ✅</td>
+<td>Maintained</td>
+</tr>
+<tr>
+<td>Angle RMSD (final)</td>
+<td>0 (hard)</td>
+<td><strong>0.458°</strong> ✅</td>
+<td>Maintained</td>
+</tr>
+</tbody>
+</table>
+<p>The 13× improvement comes entirely from eliminating NeRF drift: the Cartesian
+optimizer starts at the actual NMR structure rather than 14 Å away.</p>
+<hr />
+<h2 id="5-future-directions">5. Future Directions</h2>
+<table>
+<thead>
+<tr>
+<th>Direction</th>
+<th>Benefit</th>
+<th>Complexity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Add GmR58A RDCs (3 media, 155 total)</td>
+<td>Dramatic Q improvement; benchmarks reliable regime</td>
+<td>Low ✅ <strong>Implemented</strong></td>
+</tr>
+<tr>
+<td>Annealed geometry weight (τ=100)</td>
+<td>Schedule completes within 500-epoch budget; Q(gel) −82%, Q(PEG) −84%</td>
+<td>Low ✅ <strong>Implemented</strong></td>
+</tr>
+<tr>
+<td>Sequence-aware Ramachandran prior</td>
+<td>Physically accurate backbone prior (GLY ε-basin, PRO ring constraint)</td>
+<td>Low ✅ <strong>Implemented</strong></td>
+</tr>
+<tr>
+<td>Best-checkpoint saving</td>
+<td>Returns the iterate with best loss/Q rather than the last one</td>
+<td>Low ✅ <strong>Implemented</strong></td>
+</tr>
+<tr>
+<td>RDC cross-validation split</td>
+<td>Revealed PAG overfitting in 2KZV at ratio 3.6×</td>
+<td>Low ✅ <strong>Implemented</strong></td>
+</tr>
+<tr>
+<td>Auto-weight RDC by ratio</td>
+<td>PAG=0.36, PEG=0.32 for 2KZV; reduces incentive to overfit underdetermined media</td>
+<td>Low ✅ <strong>Implemented</strong></td>
+</tr>
+<tr>
+<td>Anchored-segment NeRF for long chains</td>
+<td>Eliminates HR2876B drift problem</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Cartesian + bond-angle penalty</td>
+<td>13× larger Cα RMSD improvement on HR2876B; structural drift 30× reduced</td>
+<td>Medium ✅ <strong>Implemented</strong></td>
+</tr>
+<tr>
+<td>Regularised tensor fitting</td>
+<td>Tikhonov penalty in fit_saupe_tensor (diff_biophys change required)</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Riemannian Adam for torsion angles</td>
+<td>Respects periodic (−π, π) topology</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Per-term early stopping</td>
+<td>Saved 55% compute on HR2876B (stops at epoch 894/2000); EarlyStopping dataclass + mode=min/max</td>
+<td>Low ✅ <strong>Implemented</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-per-term-early-stopping-implemented">6. Per-Term Early Stopping (implemented ✅)</h2>
+<p>Stops refinement when a single watched :class:<code>~diff_integrator.loss.LossTerm</code>
+fails to improve by <code>min_delta</code> for <code>patience</code> consecutive epochs.</p>
+<h3 id="motivation">Motivation</h3>
+<p>The existing global <code>patience=</code> stopping criterion watches the <strong>total
+weighted loss</strong>, which is dominated by the geometry anchor (weight 10–50×) early
+in training.  An experimental observable (Cα RMSD, RDC Q) can plateau
+invisibly while the total loss keeps drifting.  With a 2000-epoch budget and no
+observable-specific criterion, the optimizer may continue distorting backbone
+geometry long after the Cα RMSD has converged.</p>
+<h3 id="new-api">New API</h3>
+<p><strong><code>EarlyStopping</code></strong> dataclass (in <code>diff_integrator/optimizer.py</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">diff_integrator.optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">EarlyStopping</span><span class="p">,</span> <span class="n">IntegrativeRefiner</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">IntegrativeRefiner</span><span class="p">(</span><span class="n">joint_loss</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">init_params</span><span class="o">=</span><span class="n">coords</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>                          <span class="c1"># large budget — safe with early stopping</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">early_stopping</span><span class="o">=</span><span class="n">EarlyStopping</span><span class="p">(</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="n">term_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>                     <span class="c1"># index of CartesianCAShiftLoss in JointLoss</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        <span class="n">patience</span><span class="o">=</span><span class="mi">75</span><span class="p">,</span>                      <span class="c1"># epochs without improvement</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="n">min_delta</span><span class="o">=</span><span class="mf">5e-5</span><span class="p">,</span>                   <span class="c1"># ≈ 0.05 mppm threshold</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="p">),</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="n">weight_schedules</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="n">anchor_schedule</span><span class="p">},</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="p">)</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stopped at epoch </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stopped_at_epoch</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">epochs_run</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Triggered by: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">early_stopping_triggered_by</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Multiple configs and <code>mode="max"</code> are also supported:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">early_stopping</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">EarlyStopping</span><span class="p">(</span><span class="n">term_index</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">min_delta</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">),</span>   <span class="c1"># watch Cα RMSD</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">EarlyStopping</span><span class="p">(</span><span class="n">term_index</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">min_delta</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span>  <span class="c1"># watch bond penalty</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">]</span>
+</code></pre></div>
+<p>The existing global <code>patience=</code> kwarg is <strong>unchanged and still works</strong> — either
+mechanism fires independently; whichever triggers first terminates the run.</p>
+<h3 id="new-refinementresult-fields">New <code>RefinementResult</code> fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stopped_at_epoch</code></td>
+<td><code>int</code></td>
+<td>Epoch index at which stopping fired (−1 if never)</td>
+</tr>
+<tr>
+<td><code>early_stopping_triggered_by</code></td>
+<td><code>str</code></td>
+<td>Human-readable description, e.g. <code>"term_1 (ca_shift) patience=75"</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="hr2876b-cartesian-benchmark-results-2025-06">HR2876B Cartesian benchmark results (2025-06)</h3>
+<p>With <code>EarlyStopping(term_index=1, patience=75, min_delta=5e-5)</code> and <code>epochs=2000</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>500-epoch run</th>
+<th><strong>2000-epoch + early stopping</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Epochs run</td>
+<td>500</td>
+<td><strong>894</strong> (stopped at 55% budget)</td>
+</tr>
+<tr>
+<td>Δ Cα RMSD</td>
+<td>−0.144 ppm</td>
+<td><strong>−0.145 ppm</strong> (identical)</td>
+</tr>
+<tr>
+<td>Bond RMSD</td>
+<td>0.0010 Å</td>
+<td><strong>0.0007 Å</strong></td>
+</tr>
+<tr>
+<td>Angle RMSD</td>
+<td>0.458°</td>
+<td><strong>0.327°</strong></td>
+</tr>
+<tr>
+<td>Structural RMSD</td>
+<td>0.211 Å</td>
+<td><strong>0.239 Å</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The optimizer found the same quality result as the 500-epoch run while
+exploring the landscape longer (higher quality geometry), stopping automatically
+when the Cα RMSD plateau was detected.</p>
+<h3 id="tests">Tests</h3>
+<p>8 new tests in <code>tests/test_optimizer.py</code> covering:
+- Fires when observed term is flat
+- Does not fire when observed term keeps improving<br />
+- Multiple configs: shorter patience fires first
+- <code>stopped_at_epoch</code> and <code>early_stopping_triggered_by</code> populated correctly
+- Single-instance (non-list) convenience API
+- Global + per-term coexistence: first-to-fire wins
+- Dataclass validation (<code>patience</code>, <code>min_delta</code>, <code>mode</code> errors)
+- Default field values when <code>early_stopping=None</code></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
