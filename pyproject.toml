@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "diff-integrator"
-version = "0.1.1"
+version = "0.1.2"
 description = "Integrative Refinement Engine using differentiable forward models"
 readme = "README.md"
 requires-python = ">=3.10"

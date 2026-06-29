@@ -22,6 +22,9 @@ nav:
   - Use Cases: use_cases.md
   - Core Theory: theory.md
   - API Reference:
+      - Loss & Core: api/loss.md
+      - Optimizer: api/optimizer.md
+      - Schedules: api/schedules.md
       - Geometry: api/geometry.md
       - SAXS: api/saxs.md
       - NMR: api/nmr.md
